@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { STUDIO_ADDRESS, WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from "@/lib/types";
 
 export default function Footer() {
@@ -12,6 +13,9 @@ export default function Footer() {
           <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-orange-500">
             انستجرام
           </a>
+          <Link href="/policy" className="hover:text-orange-500">
+            الخصوصية والشروط
+          </Link>
         </div>
       </div>
     </footer>

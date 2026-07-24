@@ -1,5 +1,5 @@
-// شرح: SQLite للتطوير المحلي. للنشر الفعلي بدّل provider لـ "postgresql"
-// ووصّل DATABASE_URL بقاعدة بيانات حقيقية (Neon / Vercel Postgres). التفاصيل في README.
+// شرح: بعد أول نشر فعلي، القاعدة بقت PostgreSQL (Neon) بدل SQLite المحلية.
+// للتطوير المحلي بدون الاتصال بالإنترنت، ينفع تسيب provider = "sqlite" وتغيّر DATABASE_URL.
 
 generator client {
   provider = "prisma-client-js"
@@ -87,4 +87,16 @@ model TeamMember {
   canPricing   Boolean  @default(false)
   canTeam      Boolean  @default(false)
   createdAt    DateTime @default(now())
+}
+
+// أيام/مواعيد بيقفلها الأدمن يدويًا (إجازة، صيانة...) — لو setId فاضي (null)
+// يبقى اليوم مقفول بالكامل على كل السيتات، لو محدد يبقى مقفول لسيت واحد بس.
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  setId     String?
+  date      DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([setId, date])
 }

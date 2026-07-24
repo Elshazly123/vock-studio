@@ -22,6 +22,14 @@ export async function getAvailableSlots(setId: string, date: string) {
   const dayStart = new Date(`${date}T00:00:00`);
   const dayEnd = new Date(`${date}T23:59:59`);
 
+  const blocked = await prisma.blockedSlot.findFirst({
+    where: {
+      date: { gte: dayStart, lte: dayEnd },
+      OR: [{ setId }, { setId: null }],
+    },
+  });
+  if (blocked) return [];
+
   const existing = await prisma.booking.findMany({
     where: {
       setId,
@@ -49,6 +57,15 @@ export async function createBooking(input: BookingInput) {
 
   const dayStart = new Date(`${data.date}T00:00:00`);
   const dayEnd = new Date(`${data.date}T23:59:59`);
+
+  const blocked = await prisma.blockedSlot.findFirst({
+    where: {
+      date: { gte: dayStart, lte: dayEnd },
+      OR: [{ setId: data.setId }, { setId: null }],
+    },
+  });
+  if (blocked) return { error: "الاستوديو مقفول في اليوم ده، اختار يوم تاني" };
+
   const clash = await prisma.booking.findFirst({
     where: {
       setId: data.setId,

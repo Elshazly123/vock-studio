@@ -11,7 +11,13 @@ export default async function AdminPage() {
     ? await prisma.booking.findMany({ orderBy: { date: "asc" }, include: { set: true, category: true } })
     : [];
 
-  const sets = user.canSets ? await prisma.set.findMany({ orderBy: { name: "asc" } }) : [];
+  const sets = user.canSets || user.canBookings
+    ? await prisma.set.findMany({ orderBy: { name: "asc" } })
+    : [];
+
+  const blockedSlots = user.canBookings
+    ? await prisma.blockedSlot.findMany({ orderBy: { date: "asc" } })
+    : [];
 
   const categories = user.canPricing
     ? await prisma.pricingCategory.findMany({ orderBy: { sortOrder: "asc" }, include: { tiers: { orderBy: { hours: "asc" } } } })
@@ -26,6 +32,7 @@ export default async function AdminPage() {
       initialSets={JSON.parse(JSON.stringify(sets))}
       initialCategories={JSON.parse(JSON.stringify(categories))}
       initialTeam={JSON.parse(JSON.stringify(team))}
+      initialBlockedSlots={JSON.parse(JSON.stringify(blockedSlots))}
     />
   );
 }

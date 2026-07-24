@@ -65,6 +65,31 @@ export async function getAllBookings() {
   });
 }
 
+// ---------- إدارة المواعيد المقفولة ----------
+
+export async function getBlockedSlots() {
+  requirePermission("canBookings");
+  return prisma.blockedSlot.findMany({
+    orderBy: { date: "asc" },
+  });
+}
+
+export async function addBlockedSlot(input: { date: string; setId: string | null; reason?: string }) {
+  requirePermission("canBookings");
+  await prisma.blockedSlot.create({
+    data: {
+      date: new Date(`${input.date}T00:00:00`),
+      setId: input.setId,
+      reason: input.reason,
+    },
+  });
+}
+
+export async function removeBlockedSlot(id: string) {
+  requirePermission("canBookings");
+  await prisma.blockedSlot.delete({ where: { id } });
+}
+
 // ---------- السيتات والصور ----------
 
 export async function getAllSetsAdmin() {

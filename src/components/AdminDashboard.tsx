@@ -16,6 +16,8 @@ import {
   addTeamMember,
   removeTeamMember,
   toggleTeamPermission,
+  addBlockedSlot,
+  removeBlockedSlot,
 } from "@/lib/admin-actions";
 
 type BookingRow = {
@@ -53,6 +55,8 @@ type TeamRow = {
   canTeam: boolean;
 };
 
+type BlockedSlotRow = { id: string; date: string; setId: string | null; reason: string | null };
+
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   pending_deposit: { label: "مستني تحويل", cls: "text-neutral-500" },
   pending_verification: { label: "بانتظار المراجعة", cls: "text-orange-400" },
@@ -65,16 +69,19 @@ export default function AdminDashboard({
   initialSets,
   initialCategories,
   initialTeam,
+  initialBlockedSlots,
 }: {
   user: SessionPayload;
   initialBookings: BookingRow[];
   initialSets: SetRow[];
   initialCategories: CategoryRow[];
   initialTeam: TeamRow[];
+  initialBlockedSlots: BlockedSlotRow[];
 }) {
   const router = useRouter();
   const tabs = [
     { id: "bookings", label: "الحجوزات", show: user.canBookings },
+    { id: "availability", label: "المواعيد", show: user.canBookings },
     { id: "sets", label: "السيتات والصور", show: user.canSets },
     { id: "pricing", label: "الأسعار", show: user.canPricing },
     { id: "team", label: "الفريق والصلاحيات", show: user.canTeam },
@@ -114,6 +121,7 @@ export default function AdminDashboard({
       </div>
 
       {tab === "bookings" && <BookingsTab bookings={initialBookings} />}
+      {tab === "availability" && <AvailabilityTab blockedSlots={initialBlockedSlots} sets={initialSets} />}
       {tab === "sets" && <SetsTab sets={initialSets} />}
       {tab === "pricing" && <PricingTab categories={initialCategories} />}
       {tab === "team" && <TeamTab team={initialTeam} />}
@@ -174,6 +182,92 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function AvailabilityTab({ blockedSlots, sets }: { blockedSlots: BlockedSlotRow[]; sets: SetRow[] }) {
+  const router = useRouter();
+  const [date, setDate] = useState("");
+  const [setId, setSetId] = useState(""); // فاضي = الاستوديو كله
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd() {
+    if (!date) return;
+    setSaving(true);
+    await addBlockedSlot({ date, setId: setId || null, reason: reason || undefined });
+    setDate("");
+    setReason("");
+    setSaving(false);
+    router.refresh();
+  }
+
+  async function handleRemove(id: string) {
+    await removeBlockedSlot(id);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <h1 className="font-black tracking-tight text-2xl text-neutral-50">إدارة المواعيد</h1>
+      <p className="mt-1 text-xs text-neutral-500">
+        اقفل يوم إجازة أو صيانة — إما على كل السيتات، أو على سيت واحد بس.
+      </p>
+
+      <div className="card-frame mt-6 grid gap-3 p-4 sm:grid-cols-4">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        />
+        <select
+          value={setId}
+          onChange={(e) => setSetId(e.target.value)}
+          className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        >
+          <option value="">كل السيتات (الاستوديو كله)</option>
+          {sets.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <input
+          placeholder="السبب (اختياري)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={saving || !date}
+          className="rounded-sm bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {saving ? "جاري القفل..." : "قفل اليوم ده"}
+        </button>
+      </div>
+
+      <div className="mt-6 space-y-2">
+        {blockedSlots.length === 0 && (
+          <p className="text-sm text-neutral-500">مفيش أيام مقفولة دلوقتي.</p>
+        )}
+        {blockedSlots.map((b) => {
+          const setName = b.setId ? sets.find((s) => s.id === b.setId)?.name ?? "سيت محذوف" : "كل السيتات";
+          return (
+            <div key={b.id} className="flex items-center justify-between rounded-sm border border-neutral-800 bg-neutral-900 p-3 text-sm">
+              <div>
+                <span className="font-mono text-neutral-200">{b.date.slice(0, 10)}</span>
+                <span className="mx-2 text-neutral-600">·</span>
+                <span className="text-neutral-400">{setName}</span>
+                {b.reason && <span className="mx-2 text-neutral-600">· {b.reason}</span>}
+              </div>
+              <button onClick={() => handleRemove(b.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                فتح اليوم ده ✕
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
