@@ -1,0 +1,90 @@
+// شرح: SQLite للتطوير المحلي. للنشر الفعلي بدّل provider لـ "postgresql"
+// ووصّل DATABASE_URL بقاعدة بيانات حقيقية (Neon / Vercel Postgres). التفاصيل في README.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Set {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  tag         String // تصنيف السيت مثل "بوهيمي / دافئ"
+  address     String   @default("18 شارع عزت سلامة، مدينة نصر، القاهرة")
+  description String
+  amenities   String // JSON array مخزنة كنص
+  images      String // JSON array من مسارات الصور: ["/images/sets/xxx.jpg", ...]
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings Booking[]
+}
+
+// فئة الخدمة: بودكاست / ريلز / فوتوغرافي... كل فئة ليها معدات متضمنة ومستويات مدة
+model PricingCategory {
+  id        String   @id @default(cuid())
+  key       String   @unique // "podcast", "reels", ...
+  label     String // "بودكاست"
+  includes  String // JSON array: ["لوكيشن","2 كاميرا",...]
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+
+  tiers    PricingTier[]
+  bookings Booking[]
+}
+
+model PricingTier {
+  id         String @id @default(cuid())
+  categoryId String
+  hours      Int
+  price      Float // السعر بعد الخصم
+  original   Float // السعر قبل الخصم
+
+  category PricingCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, hours])
+}
+
+model Booking {
+  id            String   @id @default(cuid())
+  setId         String
+  categoryId    String
+  tierHours     Int
+  customerName  String
+  customerPhone String
+  customerEmail String
+  date          DateTime
+  startTime     String
+  price         Float
+  depositAmount Float
+  status        String   @default("pending_deposit")
+  // pending_deposit -> pending_verification -> confirmed | cancelled
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  set      Set             @relation(fields: [setId], references: [id])
+  category PricingCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([setId, date])
+}
+
+// الفريق: صاحب الحساب + المديرين/الموديريتورز اللي بيتضافوا من لوحة التحكم
+model TeamMember {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  isOwner      Boolean  @default(false)
+  canBookings  Boolean  @default(true)
+  canSets      Boolean  @default(false)
+  canPricing   Boolean  @default(false)
+  canTeam      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
