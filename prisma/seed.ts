@@ -152,7 +152,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(ownerPassword, 10);
   await prisma.teamMember.upsert({
     where: { username: "admin" },
-    update: { passwordHash },
+    update: { passwordHash, canSettings: true },
     create: {
       name: "صاحب الاستوديو",
       username: "admin",
@@ -162,7 +162,15 @@ async function main() {
       canSets: true,
       canPricing: true,
       canTeam: true,
+      canSettings: true,
     },
+  });
+
+  console.log("🌱 إضافة إعدادات الموقع الافتراضية...");
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    update: {},
+    create: { id: "main" },
   });
 
   console.log("✅ خلصنا. حساب الدخول الافتراضي: admin / " + ownerPassword);

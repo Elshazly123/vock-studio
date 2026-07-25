@@ -65,6 +65,7 @@ model Booking {
   depositAmount Float
   status        String   @default("pending_deposit")
   // pending_deposit -> pending_verification -> confirmed | cancelled
+  paymentProofUrl String?
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -86,6 +87,7 @@ model TeamMember {
   canSets      Boolean  @default(false)
   canPricing   Boolean  @default(false)
   canTeam      Boolean  @default(false)
+  canSettings  Boolean  @default(false)
   createdAt    DateTime @default(now())
 }
 
@@ -99,4 +101,15 @@ model BlockedSlot {
   createdAt DateTime @default(now())
 
   @@index([setId, date])
+}
+
+// صف واحد بس (id ثابت = "main") بيحمل إعدادات الموقع العامة القابلة للتعديل من لوحة التحكم
+model SiteSettings {
+  id             String  @id @default("main")
+  whatsappNumber String  @default("201036263424")
+  address        String  @default("18 شارع عزت سلامة، مدينة نصر، القاهرة")
+  transferNumber String  @default("01005523731")
+  instagramUrl   String?
+  facebookUrl    String?
+  tiktokUrl      String?
 }
