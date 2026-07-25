@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
 import AdminDashboard from "@/components/AdminDashboard";
 
 export default async function AdminPage() {
@@ -24,6 +25,7 @@ export default async function AdminPage() {
     : [];
 
   const team = user.canTeam ? await prisma.teamMember.findMany({ orderBy: { createdAt: "asc" } }) : [];
+  const settings = user.canSettings ? await getSettings() : null;
 
   return (
     <AdminDashboard
@@ -33,6 +35,16 @@ export default async function AdminPage() {
       initialCategories={JSON.parse(JSON.stringify(categories))}
       initialTeam={JSON.parse(JSON.stringify(team))}
       initialBlockedSlots={JSON.parse(JSON.stringify(blockedSlots))}
+      initialSettings={
+        settings ?? {
+          whatsappNumber: "",
+          address: "",
+          transferNumber: "",
+          instagramUrl: null,
+          facebookUrl: null,
+          tiktokUrl: null,
+        }
+      }
     />
   );
 }

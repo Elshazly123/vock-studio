@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, signSession, SESSION_COOKIE_NAME } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/session";
 
-function requirePermission(key: "canBookings" | "canSets" | "canPricing" | "canTeam") {
+function requirePermission(key: "canBookings" | "canSets" | "canPricing" | "canTeam" | "canSettings") {
   const user = getCurrentUser();
   if (!user || !user[key]) {
     throw new Error("مش مسموحلك تعمل الإجراء ده");
@@ -30,6 +30,7 @@ export async function login(username: string, password: string) {
     canSets: member.canSets,
     canPricing: member.canPricing,
     canTeam: member.canTeam,
+    canSettings: member.canSettings,
   });
 
   cookies().set(SESSION_COOKIE_NAME, token, {
@@ -162,6 +163,58 @@ export async function updateTier(tierId: string, price: number, original: number
   await prisma.pricingTier.update({ where: { id: tierId }, data: { price, original } });
 }
 
+export async function addCategory(input: { label: string; includes: string[] }) {
+  requirePermission("canPricing");
+  const key = input.label
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0600-\u06FF]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "category-" + Date.now();
+
+  const count = await prisma.pricingCategory.count();
+
+  return prisma.pricingCategory.create({
+    data: {
+      key: key + "-" + Date.now().toString().slice(-5),
+      label: input.label,
+      includes: JSON.stringify(input.includes),
+      sortOrder: count + 1,
+    },
+  });
+}
+
+export async function deleteCategory(id: string) {
+  requirePermission("canPricing");
+  await prisma.pricingCategory.delete({ where: { id } });
+}
+
+export async function addTier(categoryId: string, hours: number, price: number, original: number) {
+  requirePermission("canPricing");
+  await prisma.pricingTier.create({ data: { categoryId, hours, price, original } });
+}
+
+export async function deleteTier(tierId: string) {
+  requirePermission("canPricing");
+  await prisma.pricingTier.delete({ where: { id: tierId } });
+}
+
+// ---------- إعدادات الموقع العامة ----------
+
+export async function updateSettings(data: {
+  whatsappNumber: string;
+  address: string;
+  transferNumber: string;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+}) {
+  requirePermission("canSettings");
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    update: data,
+    create: { id: "main", ...data },
+  });
+}
+
 // ---------- الفريق ----------
 
 export async function getTeam() {
@@ -177,6 +230,7 @@ export async function addTeamMember(input: {
   canSets: boolean;
   canPricing: boolean;
   canTeam: boolean;
+  canSettings: boolean;
 }) {
   requirePermission("canTeam");
   const passwordHash = await hashPassword(input.password);
@@ -189,6 +243,7 @@ export async function addTeamMember(input: {
       canSets: input.canSets,
       canPricing: input.canPricing,
       canTeam: input.canTeam,
+      canSettings: input.canSettings,
     },
   });
 }
@@ -202,7 +257,7 @@ export async function removeTeamMember(id: string) {
 
 export async function toggleTeamPermission(
   id: string,
-  key: "canBookings" | "canSets" | "canPricing" | "canTeam",
+  key: "canBookings" | "canSets" | "canPricing" | "canTeam" | "canSettings",
   value: boolean
 ) {
   requirePermission("canTeam");

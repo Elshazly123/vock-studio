@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { getSettings } from "@/lib/settings";
 
 const body = IBM_Plex_Sans_Arabic({
   subsets: ["arabic"],
@@ -22,15 +23,17 @@ export const metadata: Metadata = {
   description: "استوديو VOCK — سيتات تصوير جاهزة في مدينة نصر، احجز باقتك أونلاين.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await getSettings();
+
   return (
     <html lang="ar" dir="rtl" className={`${body.variable} ${mono.variable}`}>
       <body className="bg-ink font-body text-neutral-100 antialiased">
-        <WhatsAppButton />
+        <WhatsAppButton whatsappNumber={settings.whatsappNumber} />
         <div className="flex min-h-screen flex-col">
           <Header />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer settings={settings} />
         </div>
       </body>
     </html>

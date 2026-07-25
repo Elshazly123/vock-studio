@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PackagePicker, { type SelectedPackage } from "./PackagePicker";
-import { createBooking, getAvailableSlots } from "@/lib/booking-actions";
+import { createBooking, getAvailableSlots, type SlotStatus } from "@/lib/booking-actions";
 import { CANCELLATION_POLICY, hoursLabel, type PricingCategoryData } from "@/lib/types";
 
 type Step = 1 | 2 | 3;
@@ -45,7 +45,7 @@ export default function BookingWizard({
   const [pkg, setPkg] = useState<SelectedPackage | null>(initialPackage);
   const [date, setDate] = useState(todayISO());
   const [time, setTime] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<SlotStatus[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
@@ -160,28 +160,35 @@ export default function BookingWizard({
             className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-3 font-mono text-sm text-neutral-100"
           />
 
-          <p className="mb-2 mt-5 text-sm text-neutral-400">الأوقات المتاحة</p>
+          <p className="mb-2 mt-5 text-sm text-neutral-400">الأوقات</p>
           {loadingSlots ? (
-            <p className="text-sm text-neutral-500">بنجيب الأوقات الفاضية...</p>
-          ) : availableSlots.length === 0 ? (
+            <p className="text-sm text-neutral-500">بنجيب الأوقات...</p>
+          ) : availableSlots.every((s) => !s.available) ? (
             <p className="text-sm text-red-400">مفيش أوقات فاضية في اليوم ده، جرب يوم تاني.</p>
           ) : (
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
               {availableSlots.map((slot) => (
                 <button
-                  key={slot}
-                  onClick={() => setTime(slot)}
+                  key={slot.time}
+                  onClick={() => slot.available && setTime(slot.time)}
+                  disabled={!slot.available}
+                  title={slot.available ? undefined : "محجوز"}
                   className={
                     "rounded-sm border px-2 py-2 font-mono text-xs " +
-                    (time === slot
+                    (!slot.available
+                      ? "cursor-not-allowed border-neutral-900 bg-neutral-900 text-neutral-700 line-through"
+                      : time === slot.time
                       ? "border-orange-500 bg-orange-600 text-white"
                       : "border-neutral-800 text-neutral-100 hover:border-neutral-600")
                   }
                 >
-                  {slot}
+                  {slot.time}
                 </button>
               ))}
             </div>
+          )}
+          {!loadingSlots && availableSlots.some((s) => !s.available) && (
+            <p className="mt-2 font-mono text-[10px] text-neutral-600">الأوقات المشطوبة محجوزة بالفعل.</p>
           )}
 
           <button

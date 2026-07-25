@@ -89,8 +89,21 @@ export function parseCategory(c: {
   return { ...c, includes: safeJsonArray(c.includes) };
 }
 
-export const STUDIO_ADDRESS = "18 شارع عزت سلامة، مدينة نصر، القاهرة";
-export const WHATSAPP_NUMBER = "201036263424";
-export const WHATSAPP_DISPLAY = "01036263424";
+export type SiteSettingsData = {
+  whatsappNumber: string;
+  address: string;
+  transferNumber: string;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+};
+
+// بيصيغ رقم الموبايل المصري (01xxxxxxxxx) لصيغة دولية (20xxxxxxxxxx) للينكات واتساب
+export function toWhatsappLink(localNumber: string): string {
+  const digits = localNumber.replace(/\D/g, "");
+  const intl = digits.startsWith("0") ? "2" + digits : digits;
+  return `https://wa.me/${intl}`;
+}
+
 export const CANCELLATION_POLICY =
   "لو حبيت تلغي أو تأجل الحجز قبل الميعاد بـ 24 ساعة أو أكتر، بنرجعلك الديبوزيت كامل. الإلغاء في أقل من 24 ساعة من الميعاد، الديبوزيت مش قابل للاسترداد.";

@@ -1,9 +1,9 @@
-import { WHATSAPP_NUMBER } from "@/lib/types";
+import { toWhatsappLink } from "@/lib/types";
 
-export default function WhatsAppButton() {
+export default function WhatsAppButton({ whatsappNumber }: { whatsappNumber: string }) {
   return (
     <a
-      href={`https://wa.me/${WHATSAPP_NUMBER}`}
+      href={toWhatsappLink(whatsappNumber)}
       target="_blank"
       rel="noreferrer"
       title="راسلنا على واتساب"

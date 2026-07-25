@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { parseSet, STUDIO_ADDRESS, WHATSAPP_NUMBER, WHATSAPP_DISPLAY } from "@/lib/types";
-import SetCard from "@/components/SetCard";
+import { parseSet, toWhatsappLink } from "@/lib/types";
+import { getSettings } from "@/lib/settings";
+import BentoGrid from "@/components/BentoGrid";
+import Reveal from "@/components/Reveal";
 
 export const revalidate = 30;
 
@@ -10,7 +12,8 @@ export default async function HomePage() {
   const raw = await prisma.set.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
   const sets = raw.map(parseSet);
   const heroFrames = sets.flatMap((s) => s.images).slice(0, 12);
-  const mapsSrc = "https://maps.google.com/maps?q=" + encodeURIComponent(STUDIO_ADDRESS) + "&output=embed";
+  const settings = await getSettings();
+  const mapsSrc = "https://maps.google.com/maps?q=" + encodeURIComponent(settings.address) + "&output=embed";
 
   return (
     <>
@@ -47,57 +50,61 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-5xl px-5 py-10">
-        <div className="grid gap-6 sm:grid-cols-3">
-          {[
-            { n: "01", t: "اختار السيت", b: "تصفح كل السيتات وشوف الديكور اللي يناسب فكرتك." },
-            { n: "02", t: "حدد الباقة والميعاد", b: "شوف الأوقات الفاضية أونلاين مباشرة." },
-            { n: "03", t: "ادفع الديبوزيت", b: "أكد حجزك بديبوزيت بسيط، وخلاص." },
-          ].map((step) => (
-            <div key={step.n}>
-              <span className="font-black text-2xl text-orange-500">{step.n}</span>
-              <h3 className="mt-2 font-semibold text-neutral-50">{step.t}</h3>
-              <p className="mt-1 text-sm text-neutral-400">{step.b}</p>
-            </div>
-          ))}
-        </div>
+        <Reveal>
+          <div className="grid gap-6 sm:grid-cols-3">
+            {[
+              { n: "01", t: "اختار السيت", b: "تصفح كل السيتات وشوف الديكور اللي يناسب فكرتك." },
+              { n: "02", t: "حدد الباقة والميعاد", b: "شوف الأوقات الفاضية أونلاين مباشرة." },
+              { n: "03", t: "ادفع الديبوزيت", b: "أكد حجزك بديبوزيت بسيط، وخلاص." },
+            ].map((step) => (
+              <div key={step.n}>
+                <span className="font-black text-2xl text-orange-500">{step.n}</span>
+                <h3 className="mt-2 font-semibold text-neutral-50">{step.t}</h3>
+                <p className="mt-1 text-sm text-neutral-400">{step.b}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       <section className="mx-auto max-w-5xl px-5 pb-14">
-        <h2 className="mb-5 font-black tracking-tight text-2xl text-neutral-50">اختار سيت جلستك</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sets.slice(0, 6).map((s, i) => (
-            <SetCard key={s.id} s={s} index={i} />
-          ))}
-        </div>
+        <Reveal>
+          <h2 className="mb-5 font-black tracking-tight text-2xl text-neutral-50">اختار سيت جلستك</h2>
+          <BentoGrid sets={sets} limit={6} />
+        </Reveal>
       </section>
 
       <section className="border-t border-neutral-800 bg-neutral-900/40">
-        <div className="mx-auto max-w-5xl px-5 py-14">
-          <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">عن VOCK</p>
-          <h2 className="font-black tracking-tight text-2xl text-neutral-50">Visual Output Creators Kingdom</h2>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-300">
-            استوديو VOCK في مدينة نصر بيقدّم مساحات تصوير جاهزة بديكورات مختلفة — من
-            المودرن للفينتاج للمينيمال — مع معدات كاميرا وإضاءة وصوت احترافية وفريق
-            مصورين جاهز يشتغل معاك سواء بودكاست، ريلز، أو محتوى تسويقي.
-          </p>
-        </div>
+        <Reveal>
+          <div className="mx-auto max-w-5xl px-5 py-14">
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">عن VOCK</p>
+            <h2 className="font-black tracking-tight text-2xl text-neutral-50">Visual Output Creators Kingdom</h2>
+            <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-300">
+              استوديو VOCK في مدينة نصر بيقدّم مساحات تصوير جاهزة بديكورات مختلفة — من
+              المودرن للفينتاج للمينيمال — مع معدات كاميرا وإضاءة وصوت احترافية وفريق
+              مصورين جاهز يشتغل معاك سواء بودكاست، ريلز، أو محتوى تسويقي.
+            </p>
+          </div>
+        </Reveal>
       </section>
 
       <section className="border-t border-neutral-800">
-        <div className="mx-auto grid max-w-5xl gap-8 px-5 py-14 lg:grid-cols-2">
-          <div>
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">تواصل معنا</p>
-            <h2 className="font-black tracking-tight text-2xl text-neutral-50">فين مكاننا</h2>
-            <p className="mt-3 text-sm text-neutral-400">{STUDIO_ADDRESS}</p>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer" className="btn-primary mt-5 inline-flex">
-              راسلنا على واتساب
-            </a>
-            <p dir="ltr" className="mt-2 font-mono text-xs text-neutral-500">{WHATSAPP_DISPLAY}</p>
+        <Reveal>
+          <div className="mx-auto grid max-w-5xl gap-8 px-5 py-14 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">تواصل معنا</p>
+              <h2 className="font-black tracking-tight text-2xl text-neutral-50">فين مكاننا</h2>
+              <p className="mt-3 text-sm text-neutral-400">{settings.address}</p>
+              <a href={toWhatsappLink(settings.whatsappNumber)} target="_blank" rel="noreferrer" className="btn-primary mt-5 inline-flex">
+                راسلنا على واتساب
+              </a>
+              <p dir="ltr" className="mt-2 font-mono text-xs text-neutral-500">{settings.whatsappNumber}</p>
+            </div>
+            <div className="overflow-hidden rounded-sm border border-neutral-800">
+              <iframe title="موقع استوديو VOCK" src={mapsSrc} className="h-64 w-full" style={{ border: 0 }} loading="lazy" />
+            </div>
           </div>
-          <div className="overflow-hidden rounded-sm border border-neutral-800">
-            <iframe title="موقع استوديو VOCK" src={mapsSrc} className="h-64 w-full" style={{ border: 0 }} loading="lazy" />
-          </div>
-        </div>
+        </Reveal>
       </section>
     </>
   );

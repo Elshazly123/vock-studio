@@ -21,6 +21,7 @@ export type SessionPayload = {
   canSets: boolean;
   canPricing: boolean;
   canTeam: boolean;
+  canSettings: boolean;
 };
 
 // جلسة بسيطة: JSON + توقيع HMAC، مخزنة في كوكي httpOnly.

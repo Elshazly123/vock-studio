@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { parseSet } from "@/lib/types";
-import SetCard from "@/components/SetCard";
+import BentoGrid from "@/components/BentoGrid";
 
 export const revalidate = 30;
 export const metadata = { title: "السيتات | VOCK" };
@@ -16,10 +16,8 @@ export default async function SetsPage() {
       <p className="mt-2 max-w-xl text-sm text-neutral-400">
         كل سيت في استوديو VOCK بمدينة نصر ليه طابع مختلف تمامًا — من المودرن للفينتاج للمينيمال.
       </p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sets.map((s, i) => (
-          <SetCard key={s.id} s={s} index={i} />
-        ))}
+      <div className="mt-8">
+        <BentoGrid sets={sets} />
       </div>
     </section>
   );

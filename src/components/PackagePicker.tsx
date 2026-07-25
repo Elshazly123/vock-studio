@@ -55,6 +55,9 @@ export default function PackagePicker({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {category.tiers.length === 0 && (
+          <p className="text-sm text-neutral-500">لسه مفيش مدد متاحة لهذه الفئة.</p>
+        )}
         {category.tiers.map((tier: PricingTierData) => {
           const id = category.id + "-" + tier.hours;
           const deposit = depositFor(tier.price);
@@ -84,7 +87,7 @@ export default function PackagePicker({
                     price: tier.price,
                     original: tier.original,
                     deposit,
-                    name: category.label + " · " + tier.hours + (tier.hours === 1 ? " ساعة" : " ساعات"),
+                    name: category.label + " · " + tier.hours + " " + hoursLabel(tier.hours),
                   })
                 }
                 className={

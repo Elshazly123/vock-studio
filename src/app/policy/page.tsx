@@ -1,8 +1,11 @@
-import { STUDIO_ADDRESS, WHATSAPP_DISPLAY, CANCELLATION_POLICY } from "@/lib/types";
+import { CANCELLATION_POLICY } from "@/lib/types";
+import { getSettings } from "@/lib/settings";
 
 export const metadata = { title: "سياسة الخصوصية والشروط | VOCK" };
 
-export default function PolicyPage() {
+export default async function PolicyPage() {
+  const settings = await getSettings();
+
   return (
     <section className="mx-auto max-w-2xl px-5 py-16">
       <p className="font-mono text-[11px] uppercase tracking-widest text-orange-500">VOCK</p>
@@ -15,9 +18,9 @@ export default function PolicyPage() {
         <div>
           <h2 className="mb-2 font-semibold text-neutral-50">البيانات اللي بناخدها منك</h2>
           <p>
-            وقت ما تعمل حجز، بناخد الاسم بالكامل، رقم الموبايل، والإيميل، وأي ملاحظات تكتبها
-            اختياريًا عن الجلسة. البيانات دي بتتستخدم بس عشان نأكد الحجز ونتواصل معاك بخصوصه
-            (تأكيد، تذكير بالميعاد، أو أي تغيير يخص جلستك).
+            وقت ما تعمل حجز، بناخد الاسم بالكامل، رقم الموبايل، والإيميل، وصورة إثبات تحويل
+            الديبوزيت، وأي ملاحظات تكتبها اختياريًا عن الجلسة. البيانات دي بتتستخدم بس عشان نأكد
+            الحجز ونتواصل معاك بخصوصه (تأكيد، تذكير بالميعاد، أو أي تغيير يخص جلستك).
           </p>
         </div>
 
@@ -32,8 +35,9 @@ export default function PolicyPage() {
         <div>
           <h2 className="mb-2 font-semibold text-neutral-50">الديبوزيت والدفع</h2>
           <p>
-            تأكيد الحجز بيتطلب دفع ديبوزيت عن طريق تحويل InstaPay يدوي. الديبوزيت بيتراجع من
-            فريقنا يدويًا وبيتأكد الحجز بعد التأكد من وصول التحويل.
+            تأكيد الحجز بيتطلب دفع ديبوزيت عن طريق تحويل فودافون كاش أو InstaPay، مع إرفاق صورة
+            إثبات التحويل. الديبوزيت بيتراجع من فريقنا يدويًا وبيتأكد الحجز بعد التأكد من وصول
+            التحويل.
           </p>
         </div>
 
@@ -46,8 +50,8 @@ export default function PolicyPage() {
           <h2 className="mb-2 font-semibold text-neutral-50">تواصل معنا</h2>
           <p>
             لو عندك أي سؤال عن البيانات بتاعتك أو الحجز، تواصل معنا على واتساب{" "}
-            <span dir="ltr" className="text-orange-400">{WHATSAPP_DISPLAY}</span>، أو زورنا في{" "}
-            {STUDIO_ADDRESS}.
+            <span dir="ltr" className="text-orange-400">{settings.whatsappNumber}</span>، أو زورنا في{" "}
+            {settings.address}.
           </p>
         </div>
       </div>

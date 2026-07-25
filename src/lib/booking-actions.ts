@@ -18,7 +18,9 @@ const bookingSchema = z.object({
 
 export type BookingInput = z.infer<typeof bookingSchema>;
 
-export async function getAvailableSlots(setId: string, date: string) {
+export type SlotStatus = { time: string; available: boolean };
+
+export async function getAvailableSlots(setId: string, date: string): Promise<SlotStatus[]> {
   const dayStart = new Date(`${date}T00:00:00`);
   const dayEnd = new Date(`${date}T23:59:59`);
 
@@ -28,7 +30,7 @@ export async function getAvailableSlots(setId: string, date: string) {
       OR: [{ setId }, { setId: null }],
     },
   });
-  if (blocked) return [];
+  if (blocked) return DAILY_SLOTS.map((time) => ({ time, available: false }));
 
   const existing = await prisma.booking.findMany({
     where: {
@@ -40,7 +42,7 @@ export async function getAvailableSlots(setId: string, date: string) {
   });
 
   const taken = new Set(existing.map((b) => b.startTime));
-  return DAILY_SLOTS.filter((s) => !taken.has(s));
+  return DAILY_SLOTS.map((time) => ({ time, available: !taken.has(time) }));
 }
 
 export async function createBooking(input: BookingInput) {
@@ -98,9 +100,17 @@ export async function createBooking(input: BookingInput) {
   return { bookingId: booking.id };
 }
 
-export async function markTransferSent(bookingId: string) {
+export async function markTransferSent(bookingId: string, paymentProofUrl: string) {
+  if (!paymentProofUrl) {
+    return { error: "لازم ترفع صورة إثبات التحويل الأول" };
+  }
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) return { error: "الحجز غير موجود" };
+  if (booking.status !== "pending_deposit") return { ok: true };
+
   await prisma.booking.update({
     where: { id: bookingId },
-    data: { status: "pending_verification" },
+    data: { status: "pending_verification", paymentProofUrl },
   });
+  return { ok: true };
 }

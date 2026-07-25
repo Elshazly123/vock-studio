@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import DepositPayment from "@/components/DepositPayment";
 import { hoursLabel } from "@/lib/types";
+import { getSettings } from "@/lib/settings";
 
 export default async function ConfirmBookingPage({ params }: { params: { bookingId: string } }) {
   const booking = await prisma.booking.findUnique({
@@ -10,6 +11,7 @@ export default async function ConfirmBookingPage({ params }: { params: { booking
   });
   if (!booking) notFound();
 
+  const settings = await getSettings();
   const packageName = `${booking.category.label} · ${booking.tierHours} ${hoursLabel(booking.tierHours)}`;
 
   return (
@@ -23,6 +25,7 @@ export default async function ConfirmBookingPage({ params }: { params: { booking
         depositAmount={booking.depositAmount}
         customerName={booking.customerName}
         initialStatus={booking.status}
+        transferNumber={settings.transferNumber}
       />
     </section>
   );

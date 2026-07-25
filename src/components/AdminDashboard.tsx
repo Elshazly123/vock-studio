@@ -13,11 +13,16 @@ import {
   addSetImage,
   removeSetImage,
   updateTier,
+  addCategory,
+  deleteCategory,
+  addTier,
+  deleteTier,
   addTeamMember,
   removeTeamMember,
   toggleTeamPermission,
   addBlockedSlot,
   removeBlockedSlot,
+  updateSettings,
 } from "@/lib/admin-actions";
 
 type BookingRow = {
@@ -31,6 +36,7 @@ type BookingRow = {
   set: { name: string };
   category: { label: string };
   tierHours: number;
+  paymentProofUrl: string | null;
 };
 
 type SetRow = {
@@ -43,6 +49,14 @@ type SetRow = {
 
 type TierRow = { id: string; hours: number; price: number; original: number };
 type CategoryRow = { id: string; key: string; label: string; tiers: TierRow[] };
+type SettingsRow = {
+  whatsappNumber: string;
+  address: string;
+  transferNumber: string;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  tiktokUrl: string | null;
+};
 
 type TeamRow = {
   id: string;
@@ -53,6 +67,7 @@ type TeamRow = {
   canSets: boolean;
   canPricing: boolean;
   canTeam: boolean;
+  canSettings: boolean;
 };
 
 type BlockedSlotRow = { id: string; date: string; setId: string | null; reason: string | null };
@@ -70,6 +85,7 @@ export default function AdminDashboard({
   initialCategories,
   initialTeam,
   initialBlockedSlots,
+  initialSettings,
 }: {
   user: SessionPayload;
   initialBookings: BookingRow[];
@@ -77,6 +93,7 @@ export default function AdminDashboard({
   initialCategories: CategoryRow[];
   initialTeam: TeamRow[];
   initialBlockedSlots: BlockedSlotRow[];
+  initialSettings: SettingsRow;
 }) {
   const router = useRouter();
   const tabs = [
@@ -85,6 +102,7 @@ export default function AdminDashboard({
     { id: "sets", label: "السيتات والصور", show: user.canSets },
     { id: "pricing", label: "الأسعار", show: user.canPricing },
     { id: "team", label: "الفريق والصلاحيات", show: user.canTeam },
+    { id: "settings", label: "الإعدادات العامة", show: user.canSettings },
   ].filter((t) => t.show);
   const [tab, setTab] = useState(tabs[0]?.id ?? "bookings");
 
@@ -125,6 +143,7 @@ export default function AdminDashboard({
       {tab === "sets" && <SetsTab sets={initialSets} />}
       {tab === "pricing" && <PricingTab categories={initialCategories} />}
       {tab === "team" && <TeamTab team={initialTeam} />}
+      {tab === "settings" && <SettingsTab settings={initialSettings} />}
     </section>
   );
 }
@@ -139,9 +158,9 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
   return (
     <div>
       <h1 className="font-black tracking-tight text-2xl text-neutral-50">كل الحجوزات ({bookings.length})</h1>
-      <p className="mt-1 text-xs text-neutral-500">راجع التحويل على InstaPay ثم اضغط "تأكيد" جنب الحجز.</p>
+      <p className="mt-1 text-xs text-neutral-500">راجع صورة إثبات التحويل ثم اضغط "تأكيد" جنب الحجز.</p>
       <div className="mt-6 overflow-x-auto">
-        <table className="w-full min-w-[700px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-right text-neutral-500">
               <th className="py-2 pr-2">العميل</th>
@@ -149,13 +168,14 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
               <th className="py-2 pr-2">الباقة</th>
               <th className="py-2 pr-2">الميعاد</th>
               <th className="py-2 pr-2">الديبوزيت</th>
+              <th className="py-2 pr-2">الإثبات</th>
               <th className="py-2 pr-2">الحالة</th>
               <th className="py-2 pr-2"></th>
             </tr>
           </thead>
           <tbody>
             {bookings.length === 0 && (
-              <tr><td colSpan={7} className="py-8 text-center text-neutral-500">مفيش حجوزات لسه.</td></tr>
+              <tr><td colSpan={8} className="py-8 text-center text-neutral-500">مفيش حجوزات لسه.</td></tr>
             )}
             {bookings.map((b) => {
               const st = STATUS_MAP[b.status] ?? STATUS_MAP.pending_deposit;
@@ -169,6 +189,15 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
                   <td className="py-2 pr-2 text-neutral-400">{b.category.label} · {b.tierHours}س</td>
                   <td className="py-2 pr-2 font-mono text-xs text-neutral-400">{b.date.slice(0, 10)} — {b.startTime}</td>
                   <td className="py-2 pr-2">{formatEGP(b.depositAmount)}</td>
+                  <td className="py-2 pr-2">
+                    {b.paymentProofUrl ? (
+                      <a href={b.paymentProofUrl} target="_blank" rel="noreferrer">
+                        <img src={b.paymentProofUrl} alt="إثبات" className="h-10 w-10 rounded-sm border border-neutral-800 object-cover" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-neutral-600">—</span>
+                    )}
+                  </td>
                   <td className={"py-2 pr-2 " + st.cls}>{st.label}</td>
                   <td className="py-2 pr-2">
                     {b.status !== "confirmed" && (
@@ -399,9 +428,33 @@ function EditableField({
 
 function PricingTab({ categories }: { categories: CategoryRow[] }) {
   const router = useRouter();
+  const [newLabel, setNewLabel] = useState("");
+  const [newIncludes, setNewIncludes] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
 
   async function handleUpdate(tierId: string, price: number, original: number) {
     await updateTier(tierId, price, original);
+    router.refresh();
+  }
+
+  async function handleAddCategory() {
+    if (!newLabel.trim()) return;
+    setAddingCat(true);
+    const includes = newIncludes.split("،").map((s) => s.trim()).filter(Boolean);
+    await addCategory({ label: newLabel.trim(), includes });
+    setNewLabel("");
+    setNewIncludes("");
+    setAddingCat(false);
+    router.refresh();
+  }
+
+  async function handleDeleteCategory(id: string) {
+    await deleteCategory(id);
+    router.refresh();
+  }
+
+  async function handleDeleteTier(tierId: string) {
+    await deleteTier(tierId);
     router.refresh();
   }
 
@@ -411,26 +464,129 @@ function PricingTab({ categories }: { categories: CategoryRow[] }) {
       <div className="space-y-6">
         {categories.map((cat) => (
           <div key={cat.id} className="rounded-sm border border-neutral-800 bg-neutral-900 p-4">
-            <h3 className="font-semibold text-neutral-50">{cat.label}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-neutral-50">{cat.label}</h3>
+              <button onClick={() => handleDeleteCategory(cat.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                حذف الفئة ✕
+              </button>
+            </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {cat.tiers.map((tier) => (
-                <TierEditor key={tier.id} tier={tier} onSave={handleUpdate} />
+                <TierEditor key={tier.id} tier={tier} onSave={handleUpdate} onDelete={handleDeleteTier} />
               ))}
+              <AddTierForm categoryId={cat.id} />
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 rounded-sm border border-dashed border-neutral-700 p-4">
+        <p className="mb-3 font-semibold text-neutral-50">إضافة فئة جديدة (مثلاً: فوتوغرافي)</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            placeholder="اسم الفئة"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+          <input
+            placeholder="المعدات المتضمنة، افصل بينهم بفاصلة عربي (،)"
+            value={newIncludes}
+            onChange={(e) => setNewIncludes(e.target.value)}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+        </div>
+        <button
+          onClick={handleAddCategory}
+          disabled={addingCat || !newLabel.trim()}
+          className="mt-3 rounded-sm bg-orange-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {addingCat ? "جاري الإضافة..." : "إضافة الفئة"}
+        </button>
+        <p className="mt-2 text-[11px] text-neutral-500">
+          بعد إضافة الفئة، هتقدر تضيفلها مدد وأسعار من جوه الكارت اللي هيظهر فوق.
+        </p>
       </div>
     </div>
   );
 }
 
-function TierEditor({ tier, onSave }: { tier: TierRow; onSave: (id: string, price: number, original: number) => void }) {
+function AddTierForm({ categoryId }: { categoryId: string }) {
+  const router = useRouter();
+  const [hours, setHours] = useState("");
+  const [price, setPrice] = useState("");
+  const [original, setOriginal] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd() {
+    const h = Number(hours);
+    const p = Number(price);
+    const o = Number(original);
+    if (!h || !p || !o) return;
+    setSaving(true);
+    await addTier(categoryId, h, p, o);
+    setHours("");
+    setPrice("");
+    setOriginal("");
+    setSaving(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-sm border border-dashed border-neutral-700 p-3">
+      <p className="mb-2 font-mono text-xs text-neutral-500">إضافة مدة جديدة</p>
+      <input
+        type="number"
+        placeholder="عدد الساعات"
+        value={hours}
+        onChange={(e) => setHours(e.target.value)}
+        className="w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+      />
+      <input
+        type="number"
+        placeholder="السعر بعد الخصم"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+        className="mt-2 w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+      />
+      <input
+        type="number"
+        placeholder="السعر الأصلي"
+        value={original}
+        onChange={(e) => setOriginal(e.target.value)}
+        className="mt-2 w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+      />
+      <button
+        onClick={handleAdd}
+        disabled={saving}
+        className="mt-2 w-full rounded-sm border border-orange-500 py-1.5 text-xs font-semibold text-orange-400 hover:bg-orange-600 hover:text-white disabled:opacity-40"
+      >
+        + إضافة
+      </button>
+    </div>
+  );
+}
+
+function TierEditor({
+  tier,
+  onSave,
+  onDelete,
+}: {
+  tier: TierRow;
+  onSave: (id: string, price: number, original: number) => void;
+  onDelete: (id: string) => void;
+}) {
   const [price, setPrice] = useState(tier.price);
   const [original, setOriginal] = useState(tier.original);
 
   return (
     <div className="rounded-sm border border-neutral-800 p-3">
-      <p className="mb-2 font-mono text-xs text-neutral-500">{tier.hours} {hoursLabel(tier.hours)}</p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="font-mono text-xs text-neutral-500">{tier.hours} {hoursLabel(tier.hours)}</p>
+        <button onClick={() => onDelete(tier.id)} className="text-[11px] text-neutral-600 hover:text-red-400">
+          ✕
+        </button>
+      </div>
       <label className="mb-1 block text-[11px] text-neutral-500">السعر بعد الخصم</label>
       <input
         type="number"
@@ -457,6 +613,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   canSets: "تعديل السيتات والصور",
   canPricing: "تعديل الأسعار",
   canTeam: "إدارة الفريق (صلاحية حساسة)",
+  canSettings: "تعديل الإعدادات العامة",
 };
 
 function TeamTab({ team }: { team: TeamRow[] }) {
@@ -469,9 +626,10 @@ function TeamTab({ team }: { team: TeamRow[] }) {
     canSets: false,
     canPricing: false,
     canTeam: false,
+    canSettings: false,
   });
 
-  async function handleToggle(id: string, key: "canBookings" | "canSets" | "canPricing" | "canTeam", value: boolean) {
+  async function handleToggle(id: string, key: "canBookings" | "canSets" | "canPricing" | "canTeam" | "canSettings", value: boolean) {
     await toggleTeamPermission(id, key, value);
     router.refresh();
   }
@@ -484,7 +642,7 @@ function TeamTab({ team }: { team: TeamRow[] }) {
   async function handleAdd() {
     if (!newMember.name || !newMember.username || !newMember.password) return;
     await addTeamMember(newMember);
-    setNewMember({ name: "", username: "", password: "", canBookings: true, canSets: false, canPricing: false, canTeam: false });
+    setNewMember({ name: "", username: "", password: "", canBookings: true, canSets: false, canPricing: false, canTeam: false, canSettings: false });
     router.refresh();
   }
 
@@ -507,7 +665,7 @@ function TeamTab({ team }: { team: TeamRow[] }) {
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-3">
-              {(["canBookings", "canSets", "canPricing", "canTeam"] as const).map((key) => (
+              {(["canBookings", "canSets", "canPricing", "canTeam", "canSettings"] as const).map((key) => (
                 <label key={key} className="flex items-center gap-2 text-xs text-neutral-300">
                   <input
                     type="checkbox"
@@ -531,7 +689,7 @@ function TeamTab({ team }: { team: TeamRow[] }) {
           <input placeholder="كلمة السر" dir="ltr" value={newMember.password} onChange={(e) => setNewMember({ ...newMember, password: e.target.value })} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
         </div>
         <div className="mt-3 flex flex-wrap gap-3">
-          {(["canBookings", "canSets", "canPricing", "canTeam"] as const).map((key) => (
+          {(["canBookings", "canSets", "canPricing", "canTeam", "canSettings"] as const).map((key) => (
             <label key={key} className="flex items-center gap-2 text-xs text-neutral-300">
               <input
                 type="checkbox"
@@ -572,4 +730,108 @@ function resizeToDataUrl(file: File, maxWidth: number): Promise<string> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+function SettingsTab({ settings }: { settings: SettingsRow }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState(settings);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    await updateSettings({
+      whatsappNumber: draft.whatsappNumber,
+      address: draft.address,
+      transferNumber: draft.transferNumber,
+      instagramUrl: draft.instagramUrl || null,
+      facebookUrl: draft.facebookUrl || null,
+      tiktokUrl: draft.tiktokUrl || null,
+    });
+    setSaving(false);
+    setSavedMsg("اتحفظ ✓");
+    setTimeout(() => setSavedMsg(""), 2000);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-black tracking-tight text-xl text-neutral-50">الإعدادات العامة</h2>
+        <button onClick={handleSave} disabled={saving} className="rounded-sm bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-50">
+          {saving ? "جاري الحفظ..." : "حفظ التعديلات"} {savedMsg}
+        </button>
+      </div>
+
+      <div className="space-y-5">
+        <div>
+          <label className="mb-1 block text-xs text-neutral-500">رقم الواتساب (بيظهر للعملاء، بالشكل 01xxxxxxxxx)</label>
+          <input
+            dir="ltr"
+            value={draft.whatsappNumber}
+            onChange={(e) => setDraft({ ...draft, whatsappNumber: e.target.value })}
+            className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs text-neutral-500">رقم التحويل (فودافون كاش / InstaPay)</label>
+          <input
+            dir="ltr"
+            value={draft.transferNumber}
+            onChange={(e) => setDraft({ ...draft, transferNumber: e.target.value })}
+            className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs text-neutral-500">العنوان</label>
+          <input
+            value={draft.address}
+            onChange={(e) => setDraft({ ...draft, address: e.target.value })}
+            className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+          />
+        </div>
+
+        <div className="rounded-sm border border-dashed border-neutral-700 p-4">
+          <p className="mb-3 font-semibold text-neutral-50">روابط السوشيال ميديا</p>
+          <p className="mb-3 text-[11px] text-neutral-500">
+            سيب أي حقل فاضي عشان الأيقونة بتاعته تختفي من الموقع تلقائيًا.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-xs text-neutral-500">انستجرام</label>
+              <input
+                dir="ltr"
+                placeholder="https://instagram.com/..."
+                value={draft.instagramUrl ?? ""}
+                onChange={(e) => setDraft({ ...draft, instagramUrl: e.target.value })}
+                className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-neutral-500">فيسبوك</label>
+              <input
+                dir="ltr"
+                placeholder="https://facebook.com/..."
+                value={draft.facebookUrl ?? ""}
+                onChange={(e) => setDraft({ ...draft, facebookUrl: e.target.value })}
+                className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-neutral-500">تيك توك</label>
+              <input
+                dir="ltr"
+                placeholder="https://tiktok.com/@..."
+                value={draft.tiktokUrl ?? ""}
+                onChange={(e) => setDraft({ ...draft, tiktokUrl: e.target.value })}
+                className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
