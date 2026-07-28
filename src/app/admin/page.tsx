@@ -43,6 +43,7 @@ export default async function AdminPage() {
           instagramUrl: null,
           facebookUrl: null,
           tiktokUrl: null,
+          instagramPosts: [],
         }
       }
     />

@@ -5,6 +5,7 @@ import { parseSet, toWhatsappLink } from "@/lib/types";
 import { getSettings } from "@/lib/settings";
 import BentoGrid from "@/components/BentoGrid";
 import Reveal from "@/components/Reveal";
+import InstagramFeed from "@/components/InstagramFeed";
 
 export const revalidate = 30;
 
@@ -87,6 +88,8 @@ export default async function HomePage() {
           </div>
         </Reveal>
       </section>
+
+      <InstagramFeed posts={settings.instagramPosts} />
 
       <section className="border-t border-neutral-800">
         <Reveal>

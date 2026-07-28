@@ -96,6 +96,7 @@ export type SiteSettingsData = {
   instagramUrl: string | null;
   facebookUrl: string | null;
   tiktokUrl: string | null;
+  instagramPosts: string[];
 };
 
 // بيصيغ رقم الموبايل المصري (01xxxxxxxxx) لصيغة دولية (20xxxxxxxxxx) للينكات واتساب

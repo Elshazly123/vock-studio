@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { SessionPayload } from "@/lib/auth";
 import { formatEGP, depositFor, hoursLabel } from "@/lib/types";
@@ -23,6 +23,14 @@ import {
   addBlockedSlot,
   removeBlockedSlot,
   updateSettings,
+  getCoupons,
+  addCoupon,
+  toggleCoupon,
+  deleteCoupon,
+  getWaitlist,
+  removeWaitlistEntry,
+  getStats,
+  updateInstagramPosts,
 } from "@/lib/admin-actions";
 
 type BookingRow = {
@@ -56,6 +64,7 @@ type SettingsRow = {
   instagramUrl: string | null;
   facebookUrl: string | null;
   tiktokUrl: string | null;
+  instagramPosts: string[];
 };
 
 type TeamRow = {
@@ -99,8 +108,10 @@ export default function AdminDashboard({
   const tabs = [
     { id: "bookings", label: "الحجوزات", show: user.canBookings },
     { id: "availability", label: "المواعيد", show: user.canBookings },
+    { id: "waitlist", label: "قايمة الانتظار", show: user.canBookings },
     { id: "sets", label: "السيتات والصور", show: user.canSets },
     { id: "pricing", label: "الأسعار", show: user.canPricing },
+    { id: "coupons", label: "الكوبونات", show: user.canPricing },
     { id: "team", label: "الفريق والصلاحيات", show: user.canTeam },
     { id: "settings", label: "الإعدادات العامة", show: user.canSettings },
   ].filter((t) => t.show);
@@ -140,8 +151,10 @@ export default function AdminDashboard({
 
       {tab === "bookings" && <BookingsTab bookings={initialBookings} />}
       {tab === "availability" && <AvailabilityTab blockedSlots={initialBlockedSlots} sets={initialSets} />}
+      {tab === "waitlist" && <WaitlistTab sets={initialSets} />}
       {tab === "sets" && <SetsTab sets={initialSets} />}
       {tab === "pricing" && <PricingTab categories={initialCategories} />}
+      {tab === "coupons" && <CouponsTab />}
       {tab === "team" && <TeamTab team={initialTeam} />}
       {tab === "settings" && <SettingsTab settings={initialSettings} />}
     </section>
@@ -158,7 +171,8 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
   return (
     <div>
       <h1 className="font-black tracking-tight text-2xl text-neutral-50">كل الحجوزات ({bookings.length})</h1>
-      <p className="mt-1 text-xs text-neutral-500">راجع صورة إثبات التحويل ثم اضغط "تأكيد" جنب الحجز.</p>
+      <StatsSummary />
+      <p className="mt-5 text-xs text-neutral-500">راجع صورة إثبات التحويل ثم اضغط "تأكيد" جنب الحجز.</p>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead>
@@ -737,6 +751,7 @@ function SettingsTab({ settings }: { settings: SettingsRow }) {
   const [draft, setDraft] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  const [newPostUrl, setNewPostUrl] = useState("");
 
   async function handleSave() {
     setSaving(true);
@@ -751,6 +766,22 @@ function SettingsTab({ settings }: { settings: SettingsRow }) {
     setSaving(false);
     setSavedMsg("اتحفظ ✓");
     setTimeout(() => setSavedMsg(""), 2000);
+    router.refresh();
+  }
+
+  async function handleAddPost() {
+    if (!newPostUrl.trim()) return;
+    const next = [...draft.instagramPosts, newPostUrl.trim()];
+    setDraft({ ...draft, instagramPosts: next });
+    setNewPostUrl("");
+    await updateInstagramPosts(next);
+    router.refresh();
+  }
+
+  async function handleRemovePost(url: string) {
+    const next = draft.instagramPosts.filter((p) => p !== url);
+    setDraft({ ...draft, instagramPosts: next });
+    await updateInstagramPosts(next);
     router.refresh();
   }
 
@@ -831,7 +862,260 @@ function SettingsTab({ settings }: { settings: SettingsRow }) {
             </div>
           </div>
         </div>
+
+        <div className="rounded-sm border border-dashed border-neutral-700 p-4">
+          <p className="mb-3 font-semibold text-neutral-50">بوستات انستجرام مختارة للعرض في الموقع</p>
+          <p className="mb-3 text-[11px] text-neutral-500">
+            انسخ لينك أي بوست من انستجرام (Copy Link) والصقه هنا.
+          </p>
+          <div className="mb-3 flex gap-2">
+            <input
+              dir="ltr"
+              placeholder="https://www.instagram.com/p/..."
+              value={newPostUrl}
+              onChange={(e) => setNewPostUrl(e.target.value)}
+              className="flex-1 rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+            />
+            <button onClick={handleAddPost} className="rounded-sm border border-orange-500 px-4 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-600 hover:text-white">
+              + إضافة
+            </button>
+          </div>
+          <div className="space-y-2">
+            {draft.instagramPosts.map((url) => (
+              <div key={url} className="flex items-center justify-between rounded-sm border border-neutral-800 p-2 text-xs">
+                <span dir="ltr" className="truncate text-neutral-400">{url}</span>
+                <button onClick={() => handleRemovePost(url)} className="text-neutral-500 hover:text-red-400">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function StatsSummary() {
+  const [stats, setStats] = useState<{
+    totalRevenue: number;
+    totalBookings: number;
+    topSetName: string;
+    topSetCount: number;
+    topCategoryName: string;
+    topCategoryCount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    getStats().then(setStats);
+  }, []);
+
+  if (!stats) return null;
+
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+      <div className="rounded-sm border border-neutral-800 bg-neutral-900 p-3">
+        <p className="font-mono text-[11px] text-neutral-500">إجمالي الإيرادات (المؤكدة)</p>
+        <p className="mt-1 font-black text-lg text-orange-500">{formatEGP(stats.totalRevenue)}</p>
+      </div>
+      <div className="rounded-sm border border-neutral-800 bg-neutral-900 p-3">
+        <p className="font-mono text-[11px] text-neutral-500">عدد الحجوزات</p>
+        <p className="mt-1 font-black text-lg text-neutral-50">{stats.totalBookings}</p>
+      </div>
+      <div className="rounded-sm border border-neutral-800 bg-neutral-900 p-3">
+        <p className="font-mono text-[11px] text-neutral-500">أكتر سيت مطلوب</p>
+        <p className="mt-1 text-sm text-neutral-200">{stats.topSetName} ({stats.topSetCount})</p>
+      </div>
+      <div className="rounded-sm border border-neutral-800 bg-neutral-900 p-3">
+        <p className="font-mono text-[11px] text-neutral-500">أكتر فئة مطلوبة</p>
+        <p className="mt-1 text-sm text-neutral-200">{stats.topCategoryName} ({stats.topCategoryCount})</p>
+      </div>
+    </div>
+  );
+}
+
+type CouponRow = {
+  id: string;
+  code: string;
+  type: string;
+  value: number;
+  isActive: boolean;
+  usageLimit: number | null;
+  usedCount: number;
+  expiresAt: string | null;
+};
+
+function CouponsTab() {
+  const [coupons, setCoupons] = useState<CouponRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ code: "", type: "percent" as "percent" | "fixed", value: "", usageLimit: "", expiresAt: "" });
+
+  function refresh() {
+    getCoupons().then((data) => {
+      setCoupons(data as unknown as CouponRow[]);
+      setLoading(false);
+    });
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleAdd() {
+    if (!form.code.trim() || !form.value) return;
+    await addCoupon({
+      code: form.code,
+      type: form.type,
+      value: Number(form.value),
+      usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
+      expiresAt: form.expiresAt || null,
+    });
+    setForm({ code: "", type: "percent", value: "", usageLimit: "", expiresAt: "" });
+    refresh();
+  }
+
+  async function handleToggle(id: string, isActive: boolean) {
+    await toggleCoupon(id, isActive);
+    refresh();
+  }
+
+  async function handleDelete(id: string) {
+    await deleteCoupon(id);
+    refresh();
+  }
+
+  return (
+    <div>
+      <h2 className="mb-4 font-black tracking-tight text-xl text-neutral-50">الكوبونات</h2>
+
+      {loading ? (
+        <p className="text-sm text-neutral-500">جاري التحميل...</p>
+      ) : (
+        <div className="space-y-2">
+          {coupons.length === 0 && <p className="text-sm text-neutral-500">مفيش كوبونات لسه.</p>}
+          {coupons.map((c) => (
+            <div key={c.id} className="flex items-center justify-between rounded-sm border border-neutral-800 bg-neutral-900 p-3 text-sm">
+              <div>
+                <span dir="ltr" className="font-mono font-semibold text-neutral-100">{c.code}</span>
+                <span className="mx-2 text-neutral-600">·</span>
+                <span className="text-neutral-400">
+                  {c.type === "percent" ? `${c.value}%` : formatEGP(c.value)} خصم
+                </span>
+                <span className="mx-2 text-neutral-600">·</span>
+                <span className="text-neutral-500">استخدم {c.usedCount}{c.usageLimit ? ` / ${c.usageLimit}` : ""}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1 text-xs text-neutral-400">
+                  <input type="checkbox" checked={c.isActive} onChange={(e) => handleToggle(c.id, e.target.checked)} />
+                  فعّال
+                </label>
+                <button onClick={() => handleDelete(c.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                  حذف ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 rounded-sm border border-dashed border-neutral-700 p-4">
+        <p className="mb-3 font-semibold text-neutral-50">إضافة كوبون جديد</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            placeholder="الكود (مثلاً VOCK20)"
+            dir="ltr"
+            value={form.code}
+            onChange={(e) => setForm({ ...form, code: e.target.value })}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+          <select
+            value={form.type}
+            onChange={(e) => setForm({ ...form, type: e.target.value as "percent" | "fixed" })}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          >
+            <option value="percent">نسبة مئوية %</option>
+            <option value="fixed">مبلغ ثابت (جنيه)</option>
+          </select>
+          <input
+            type="number"
+            placeholder={form.type === "percent" ? "قيمة الخصم %" : "قيمة الخصم بالجنيه"}
+            value={form.value}
+            onChange={(e) => setForm({ ...form, value: e.target.value })}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+          <input
+            type="number"
+            placeholder="حد الاستخدام (اختياري)"
+            value={form.usageLimit}
+            onChange={(e) => setForm({ ...form, usageLimit: e.target.value })}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+          <input
+            type="date"
+            value={form.expiresAt}
+            onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+            className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+          />
+        </div>
+        <button onClick={handleAdd} className="mt-3 rounded-sm bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500">
+          إضافة الكوبون
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type WaitlistRow = { id: string; date: string; setId: string; customerName: string; customerPhone: string };
+
+function WaitlistTab({ sets }: { sets: SetRow[] }) {
+  const [entries, setEntries] = useState<WaitlistRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  function refresh() {
+    getWaitlist().then((data) => {
+      setEntries(data as unknown as WaitlistRow[]);
+      setLoading(false);
+    });
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleRemove(id: string) {
+    await removeWaitlistEntry(id);
+    refresh();
+  }
+
+  return (
+    <div>
+      <h2 className="mb-1 font-black tracking-tight text-xl text-neutral-50">قايمة الانتظار</h2>
+      <p className="mb-4 text-xs text-neutral-500">عملاء مهتمين بمواعيد كانت محجوزة بالكامل. كلّمهم واتساب لو فضى ميعاد.</p>
+      {loading ? (
+        <p className="text-sm text-neutral-500">جاري التحميل...</p>
+      ) : entries.length === 0 ? (
+        <p className="text-sm text-neutral-500">مفيش حد مسجل دلوقتي.</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((e) => {
+            const setName = sets.find((s) => s.id === e.setId)?.name ?? "سيت محذوف";
+            return (
+              <div key={e.id} className="flex items-center justify-between rounded-sm border border-neutral-800 bg-neutral-900 p-3 text-sm">
+                <div>
+                  <span className="text-neutral-200">{e.customerName}</span>
+                  <span className="mx-2 text-neutral-600">·</span>
+                  <span dir="ltr" className="font-mono text-neutral-400">{e.customerPhone}</span>
+                  <span className="mx-2 text-neutral-600">·</span>
+                  <span className="text-neutral-400">{setName}</span>
+                  <span className="mx-2 text-neutral-600">·</span>
+                  <span className="font-mono text-xs text-neutral-500">{e.date.slice(0, 10)}</span>
+                </div>
+                <button onClick={() => handleRemove(e.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                  إزالة ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -197,6 +197,98 @@ export async function deleteTier(tierId: string) {
   await prisma.pricingTier.delete({ where: { id: tierId } });
 }
 
+// ---------- الكوبونات ----------
+
+export async function getCoupons() {
+  requirePermission("canPricing");
+  return prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export async function addCoupon(input: {
+  code: string;
+  type: "percent" | "fixed";
+  value: number;
+  usageLimit: number | null;
+  expiresAt: string | null;
+}) {
+  requirePermission("canPricing");
+  await prisma.coupon.create({
+    data: {
+      code: input.code.toUpperCase().trim(),
+      type: input.type,
+      value: input.value,
+      usageLimit: input.usageLimit,
+      expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+    },
+  });
+}
+
+export async function toggleCoupon(id: string, isActive: boolean) {
+  requirePermission("canPricing");
+  await prisma.coupon.update({ where: { id }, data: { isActive } });
+}
+
+export async function deleteCoupon(id: string) {
+  requirePermission("canPricing");
+  await prisma.coupon.delete({ where: { id } });
+}
+
+// ---------- قايمة الانتظار ----------
+
+export async function getWaitlist() {
+  requirePermission("canBookings");
+  return prisma.waitlistEntry.findMany({ orderBy: { date: "asc" } });
+}
+
+export async function removeWaitlistEntry(id: string) {
+  requirePermission("canBookings");
+  await prisma.waitlistEntry.delete({ where: { id } });
+}
+
+// ---------- إحصائيات ----------
+
+export async function getStats() {
+  requirePermission("canBookings");
+
+  const bookings = await prisma.booking.findMany({
+    where: { status: { in: ["confirmed", "pending_verification"] } },
+    include: { set: true, category: true },
+  });
+
+  const totalRevenue = bookings.reduce((sum, b) => sum + b.price, 0);
+  const totalBookings = bookings.length;
+
+  const bySet: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
+  bookings.forEach((b) => {
+    bySet[b.set.name] = (bySet[b.set.name] || 0) + 1;
+    byCategory[b.category.label] = (byCategory[b.category.label] || 0) + 1;
+  });
+
+  const topSet = Object.entries(bySet).sort((a, b) => b[1] - a[1])[0];
+  const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+
+  return {
+    totalRevenue,
+    totalBookings,
+    topSetName: topSet?.[0] ?? "—",
+    topSetCount: topSet?.[1] ?? 0,
+    topCategoryName: topCategory?.[0] ?? "—",
+    topCategoryCount: topCategory?.[1] ?? 0,
+  };
+}
+
+// ---------- بوستات انستجرام مختارة ----------
+
+export async function updateInstagramPosts(posts: string[]) {
+  requirePermission("canSettings");
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    update: { instagramPosts: JSON.stringify(posts) },
+    create: { id: "main", instagramPosts: JSON.stringify(posts) },
+  });
+}
+
 // ---------- إعدادات الموقع العامة ----------
 
 export async function updateSettings(data: {

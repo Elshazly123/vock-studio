@@ -8,11 +8,19 @@ const DEFAULTS: SiteSettingsData = {
   instagramUrl: null,
   facebookUrl: null,
   tiktokUrl: null,
+  instagramPosts: [],
 };
 
 export async function getSettings(): Promise<SiteSettingsData> {
   const row = await prisma.siteSettings.findUnique({ where: { id: "main" } });
   if (!row) return DEFAULTS;
+  let instagramPosts: string[] = [];
+  try {
+    const parsed = JSON.parse(row.instagramPosts || "[]");
+    if (Array.isArray(parsed)) instagramPosts = parsed;
+  } catch {
+    instagramPosts = [];
+  }
   return {
     whatsappNumber: row.whatsappNumber,
     address: row.address,
@@ -20,5 +28,6 @@ export async function getSettings(): Promise<SiteSettingsData> {
     instagramUrl: row.instagramUrl,
     facebookUrl: row.facebookUrl,
     tiktokUrl: row.tiktokUrl,
+    instagramPosts,
   };
 }

@@ -14,6 +14,7 @@ const bookingSchema = z.object({
   date: z.string().min(1),
   startTime: z.string().min(1),
   notes: z.string().optional(),
+  couponCode: z.string().optional(),
 });
 
 export type BookingInput = z.infer<typeof bookingSchema>;
@@ -43,6 +44,19 @@ export async function getAvailableSlots(setId: string, date: string): Promise<Sl
 
   const taken = new Set(existing.map((b) => b.startTime));
   return DAILY_SLOTS.map((time) => ({ time, available: !taken.has(time) }));
+}
+
+// بيتأكد إن الكوبون شغال (فعّال، معملش تجاوز الحد، ولسه معملوش انتهاء) ويرجع قيمة الخصم
+export async function validateCoupon(code: string, price: number) {
+  const coupon = await prisma.coupon.findUnique({ where: { code: code.toUpperCase().trim() } });
+  if (!coupon || !coupon.isActive) return { error: "الكوبون غير صحيح" };
+  if (coupon.expiresAt && coupon.expiresAt < new Date()) return { error: "الكوبون منتهي" };
+  if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+    return { error: "الكوبون خلص استخدامه" };
+  }
+  const discount = coupon.type === "percent" ? Math.round((price * coupon.value) / 100) : coupon.value;
+  const finalPrice = Math.max(0, price - discount);
+  return { discount, finalPrice };
 }
 
 export async function createBooking(input: BookingInput) {
@@ -78,7 +92,19 @@ export async function createBooking(input: BookingInput) {
   });
   if (clash) return { error: "الميعاد ده اتحجز لحظة قبلك، اختار وقت تاني" };
 
-  const depositAmount = Math.round((tier.price * 0.2) / 50) * 50;
+  let finalPrice = tier.price;
+  let discountAmount = 0;
+  let couponCode: string | null = null;
+
+  if (data.couponCode) {
+    const result = await validateCoupon(data.couponCode, tier.price);
+    if ("error" in result) return { error: result.error };
+    finalPrice = result.finalPrice;
+    discountAmount = result.discount;
+    couponCode = data.couponCode.toUpperCase().trim();
+  }
+
+  const depositAmount = Math.round((finalPrice * 0.2) / 50) * 50;
 
   const booking = await prisma.booking.create({
     data: {
@@ -90,12 +116,21 @@ export async function createBooking(input: BookingInput) {
       customerEmail: data.customerEmail,
       date: new Date(`${data.date}T00:00:00`),
       startTime: data.startTime,
-      price: tier.price,
+      price: finalPrice,
       depositAmount,
+      couponCode,
+      discountAmount,
       notes: data.notes,
       status: "pending_deposit",
     },
   });
+
+  if (couponCode) {
+    await prisma.coupon.update({
+      where: { code: couponCode },
+      data: { usedCount: { increment: 1 } },
+    });
+  }
 
   return { bookingId: booking.id };
 }
@@ -111,6 +146,21 @@ export async function markTransferSent(bookingId: string, paymentProofUrl: strin
   await prisma.booking.update({
     where: { id: bookingId },
     data: { status: "pending_verification", paymentProofUrl },
+  });
+  return { ok: true };
+}
+
+export async function joinWaitlist(input: { setId: string; date: string; customerName: string; customerPhone: string }) {
+  if (!input.customerName || !/^01[0125][0-9]{8}$/.test(input.customerPhone)) {
+    return { error: "بيانات غير صحيحة" };
+  }
+  await prisma.waitlistEntry.create({
+    data: {
+      setId: input.setId,
+      date: new Date(`${input.date}T00:00:00`),
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
+    },
   });
   return { ok: true };
 }
