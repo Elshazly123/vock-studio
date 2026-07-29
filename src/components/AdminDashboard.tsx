@@ -163,6 +163,8 @@ export default function AdminDashboard({
 
 function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
   const router = useRouter();
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
   async function confirm(id: string) {
     await confirmBooking(id);
     router.refresh();
@@ -205,9 +207,9 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
                   <td className="py-2 pr-2">{formatEGP(b.depositAmount)}</td>
                   <td className="py-2 pr-2">
                     {b.paymentProofUrl ? (
-                      <a href={b.paymentProofUrl} target="_blank" rel="noreferrer">
-                        <img src={b.paymentProofUrl} alt="إثبات" className="h-10 w-10 rounded-sm border border-neutral-800 object-cover" />
-                      </a>
+                      <button onClick={() => setLightbox(b.paymentProofUrl)}>
+                        <img src={b.paymentProofUrl} alt="إثبات" className="h-10 w-10 rounded-sm border border-neutral-800 object-cover hover:border-orange-500" />
+                      </button>
                     ) : (
                       <span className="text-xs text-neutral-600">—</span>
                     )}
@@ -226,6 +228,18 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
           </tbody>
         </table>
       </div>
+
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-6"
+        >
+          <img src={lightbox} alt="إثبات التحويل" className="max-h-[85vh] max-w-full rounded-sm border border-neutral-700 object-contain" />
+          <button onClick={() => setLightbox(null)} className="absolute left-6 top-6 text-2xl text-white hover:text-orange-500">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
