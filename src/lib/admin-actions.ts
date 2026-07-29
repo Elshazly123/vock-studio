@@ -58,6 +58,11 @@ export async function confirmBooking(bookingId: string) {
   });
 }
 
+export async function deleteBooking(bookingId: string) {
+  requirePermission("canBookings");
+  await prisma.booking.delete({ where: { id: bookingId } });
+}
+
 export async function getAllBookings() {
   requirePermission("canBookings");
   return prisma.booking.findMany({

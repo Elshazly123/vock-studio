@@ -7,6 +7,7 @@ import { formatEGP, depositFor, hoursLabel } from "@/lib/types";
 import {
   logout,
   confirmBooking,
+  deleteBooking,
   addSet,
   updateSet,
   deleteSet,
@@ -170,6 +171,12 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
     router.refresh();
   }
 
+  async function handleDelete(id: string, customerName: string) {
+    if (!window.confirm(`متأكد إنك عايز تمسح حجز "${customerName}" نهائيًا؟ الخطوة دي مش قابلة للتراجع.`)) return;
+    await deleteBooking(id);
+    router.refresh();
+  }
+
   return (
     <div>
       <h1 className="font-black tracking-tight text-2xl text-neutral-50">كل الحجوزات ({bookings.length})</h1>
@@ -216,11 +223,16 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
                   </td>
                   <td className={"py-2 pr-2 " + st.cls}>{st.label}</td>
                   <td className="py-2 pr-2">
-                    {b.status !== "confirmed" && (
-                      <button onClick={() => confirm(b.id)} className="rounded-sm border border-orange-500 px-2.5 py-1 text-xs text-orange-400 hover:bg-orange-600 hover:text-white">
-                        تأكيد
+                    <div className="flex gap-2">
+                      {b.status !== "confirmed" && (
+                        <button onClick={() => confirm(b.id)} className="rounded-sm border border-orange-500 px-2.5 py-1 text-xs text-orange-400 hover:bg-orange-600 hover:text-white">
+                          تأكيد
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(b.id, b.customerName)} className="rounded-sm border border-neutral-700 px-2.5 py-1 text-xs text-neutral-500 hover:border-red-500 hover:text-red-400">
+                        حذف
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -606,6 +618,14 @@ function TierEditor({
 }) {
   const [price, setPrice] = useState(tier.price);
   const [original, setOriginal] = useState(tier.original);
+  const percent = original > 0 ? Math.round((1 - price / original) * 100) : 0;
+
+  function handlePercentChange(newPercent: number) {
+    const clamped = Math.max(0, Math.min(95, newPercent));
+    const newPrice = Math.round((original * (1 - clamped / 100)) / 5) * 5;
+    setPrice(newPrice);
+    onSave(tier.id, newPrice, original);
+  }
 
   return (
     <div className="rounded-sm border border-neutral-800 p-3">
@@ -615,19 +635,26 @@ function TierEditor({
           ✕
         </button>
       </div>
-      <label className="mb-1 block text-[11px] text-neutral-500">السعر بعد الخصم</label>
-      <input
-        type="number"
-        value={price}
-        onChange={(e) => setPrice(Number(e.target.value))}
-        onBlur={() => onSave(tier.id, price, original)}
-        className="w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
-      />
-      <label className="mb-1 mt-2 block text-[11px] text-neutral-500">السعر الأصلي</label>
+      <label className="mb-1 block text-[11px] text-neutral-500">السعر الأصلي</label>
       <input
         type="number"
         value={original}
         onChange={(e) => setOriginal(Number(e.target.value))}
+        onBlur={() => onSave(tier.id, price, original)}
+        className="w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+      />
+      <label className="mb-1 mt-2 block text-[11px] text-orange-400">نسبة الخصم %</label>
+      <input
+        type="number"
+        value={percent}
+        onChange={(e) => handlePercentChange(Number(e.target.value))}
+        className="w-full rounded-sm border border-orange-500/40 bg-neutral-950 px-2 py-1.5 text-sm text-orange-300"
+      />
+      <label className="mb-1 mt-2 block text-[11px] text-neutral-500">السعر بعد الخصم (يتحسب لوحده، أو عدّله يدوي)</label>
+      <input
+        type="number"
+        value={price}
+        onChange={(e) => setPrice(Number(e.target.value))}
         onBlur={() => onSave(tier.id, price, original)}
         className="w-full rounded-sm border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
       />
