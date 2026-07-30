@@ -30,26 +30,56 @@ function resizeImageFile(file: File, maxWidth = 900): Promise<string> {
   });
 }
 
+// بيبني لينك "أضف لتقويم جوجل" بتاريخ ووقت الجلسة الفعليين
+function buildCalendarLink(input: {
+  title: string;
+  date: string;
+  startTime: string;
+  durationHours: number;
+  location: string;
+  details: string;
+}) {
+  const [h, m] = input.startTime.split(":").map(Number);
+  const start = new Date(`${input.date}T00:00:00`);
+  start.setHours(h, m, 0, 0);
+  const end = new Date(start.getTime() + input.durationHours * 60 * 60 * 1000);
+
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: input.title,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    location: input.location,
+    details: input.details,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export default function DepositPayment({
   bookingId,
   setName,
   packageName,
   date,
   startTime,
+  durationHours,
   depositAmount,
   customerName,
   initialStatus,
   transferNumber,
+  address,
 }: {
   bookingId: string;
   setName: string;
   packageName: string;
   date: string;
   startTime: string;
+  durationHours: number;
   depositAmount: number;
   customerName: string;
   initialStatus: string;
   transferNumber: string;
+  address: string;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [loading, setLoading] = useState(false);
@@ -88,7 +118,23 @@ export default function DepositPayment({
         </h1>
         <p className="mt-3 text-sm text-neutral-400">هيوصلك تأكيد بكل التفاصيل على الإيميل والموبايل.</p>
         <SummaryCard setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel="الديبوزيت المدفوع" />
-        <Link href="/" className="btn-secondary mt-6 inline-flex">العودة للرئيسية</Link>
+        <a
+          href={buildCalendarLink({
+            title: `جلسة تصوير VOCK — ${setName}`,
+            date,
+            startTime,
+            durationHours,
+            location: address,
+            details: `الباقة: ${packageName}`,
+          })}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary mt-4 inline-flex"
+        >
+          📅 ضيفه في تقويم جوجل
+        </a>
+        <br />
+        <Link href="/" className="btn-secondary mt-3 inline-flex">العودة للرئيسية</Link>
       </div>
     );
   }

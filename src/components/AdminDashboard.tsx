@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { SessionPayload } from "@/lib/auth";
-import { formatEGP, depositFor, hoursLabel } from "@/lib/types";
+import { formatEGP, depositFor, hoursLabel, toWhatsappLink } from "@/lib/types";
 import {
   logout,
   confirmBooking,
   deleteBooking,
+  createBookingAdmin,
   addSet,
   updateSet,
   deleteSet,
@@ -46,6 +47,7 @@ type BookingRow = {
   category: { label: string };
   tierHours: number;
   paymentProofUrl: string | null;
+  createdAt: string;
 };
 
 type SetRow = {
@@ -150,7 +152,7 @@ export default function AdminDashboard({
         ))}
       </div>
 
-      {tab === "bookings" && <BookingsTab bookings={initialBookings} />}
+      {tab === "bookings" && <BookingsTab bookings={initialBookings} sets={initialSets} categories={initialCategories} />}
       {tab === "availability" && <AvailabilityTab blockedSlots={initialBlockedSlots} sets={initialSets} />}
       {tab === "waitlist" && <WaitlistTab sets={initialSets} />}
       {tab === "sets" && <SetsTab sets={initialSets} />}
@@ -162,9 +164,10 @@ export default function AdminDashboard({
   );
 }
 
-function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
+function BookingsTab({ bookings, sets, categories }: { bookings: BookingRow[]; sets: SetRow[]; categories: CategoryRow[] }) {
   const router = useRouter();
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
 
   async function confirm(id: string) {
     await confirmBooking(id);
@@ -177,10 +180,66 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
     router.refresh();
   }
 
+  const stalePending = bookings.filter((b) => {
+    if (b.status !== "pending_verification") return false;
+    return Date.now() - new Date(b.createdAt).getTime() > 2 * 60 * 60 * 1000;
+  });
+
+  function exportCsv() {
+    const rows = [
+      ["الاسم", "الموبايل", "السيت", "الباقة", "المدة", "التاريخ", "الوقت", "الديبوزيت", "الحالة"],
+      ...bookings.map((b) => [
+        b.customerName,
+        b.customerPhone,
+        b.set.name,
+        b.category.label,
+        `${b.tierHours} ${hoursLabel(b.tierHours)}`,
+        b.date.slice(0, 10),
+        b.startTime,
+        String(b.depositAmount),
+        STATUS_MAP[b.status]?.label ?? b.status,
+      ]),
+    ];
+    const csv = "\uFEFF" + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vock-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
-      <h1 className="font-black tracking-tight text-2xl text-neutral-50">كل الحجوزات ({bookings.length})</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-black tracking-tight text-2xl text-neutral-50">كل الحجوزات ({bookings.length})</h1>
+        <div className="flex gap-2">
+          <button onClick={() => setShowManualForm((v) => !v)} className="rounded-sm border border-orange-500 px-3 py-1.5 text-xs text-orange-400 hover:bg-orange-600 hover:text-white">
+            {showManualForm ? "إلغاء" : "+ حجز يدوي"}
+          </button>
+          <button onClick={exportCsv} className="rounded-sm border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:border-orange-500 hover:text-orange-400">
+            تصدير Excel
+          </button>
+        </div>
+      </div>
+
+      {showManualForm && (
+        <ManualBookingForm
+          sets={sets}
+          categories={categories}
+          onDone={() => {
+            setShowManualForm(false);
+            router.refresh();
+          }}
+        />
+      )}
       <StatsSummary />
+      {stalePending.length > 0 && (
+        <div className="mt-4 rounded-sm border border-orange-500/50 bg-orange-500/10 p-3 text-sm text-orange-300">
+          ⚠️ فيه {stalePending.length} حجز مستني مراجعتك من أكتر من ساعتين. راجعهم بأسرع وقت.
+        </div>
+      )}
       <p className="mt-5 text-xs text-neutral-500">راجع صورة إثبات التحويل ثم اضغط "تأكيد" جنب الحجز.</p>
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
@@ -228,6 +287,19 @@ function BookingsTab({ bookings }: { bookings: BookingRow[] }) {
                         <button onClick={() => confirm(b.id)} className="rounded-sm border border-orange-500 px-2.5 py-1 text-xs text-orange-400 hover:bg-orange-600 hover:text-white">
                           تأكيد
                         </button>
+                      )}
+                      {b.status === "confirmed" && (
+                        <a
+                          href={toWhatsappLink(
+                            b.customerPhone,
+                            `أهلاً ${b.customerName} 👋\nحجزك في VOCK اتأكد ✅\n\nالسيت: ${b.set.name}\nالباقة: ${b.category.label} · ${b.tierHours} ${hoursLabel(b.tierHours)}\nالميعاد: ${b.date.slice(0, 10)} — ${b.startTime}\n\nمستنينك، لو محتاج أي حاجة كلمنا هنا.`
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-sm border border-green-600 px-2.5 py-1 text-xs text-green-400 hover:bg-green-600 hover:text-white"
+                        >
+                          واتساب تأكيد
+                        </a>
                       )}
                       <button onClick={() => handleDelete(b.id, b.customerName)} className="rounded-sm border border-neutral-700 px-2.5 py-1 text-xs text-neutral-500 hover:border-red-500 hover:text-red-400">
                         حذف
@@ -1157,6 +1229,93 @@ function WaitlistTab({ sets }: { sets: SetRow[] }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function ManualBookingForm({
+  sets,
+  categories,
+  onDone,
+}: {
+  sets: SetRow[];
+  categories: CategoryRow[];
+  onDone: () => void;
+}) {
+  const [setId, setSetId] = useState(sets[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const activeCategory = categories.find((c) => c.id === categoryId);
+  const [tierHours, setTierHours] = useState(activeCategory?.tiers[0]?.hours ?? 1);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("10:00");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit() {
+    if (!setId || !categoryId || !customerName || !customerPhone || !date) {
+      setError("املأ كل الحقول الأساسية");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await createBookingAdmin({
+        setId,
+        categoryId,
+        tierHours,
+        customerName,
+        customerPhone,
+        customerEmail,
+        date,
+        startTime,
+        notes: notes || undefined,
+      });
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "حصل خطأ");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="my-4 rounded-sm border border-dashed border-orange-500/50 bg-neutral-900 p-4">
+      <p className="mb-3 font-semibold text-neutral-50">تسجيل حجز يدوي (بيتحط مؤكد على طول)</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <select value={setId} onChange={(e) => setSetId(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100">
+          {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select
+          value={categoryId}
+          onChange={(e) => {
+            setCategoryId(e.target.value);
+            const cat = categories.find((c) => c.id === e.target.value);
+            setTierHours(cat?.tiers[0]?.hours ?? 1);
+          }}
+          className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100"
+        >
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
+        <select value={tierHours} onChange={(e) => setTierHours(Number(e.target.value))} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100">
+          {activeCategory?.tiers.map((t) => (
+            <option key={t.id} value={t.hours}>{t.hours} {hoursLabel(t.hours)} — {formatEGP(t.price)}</option>
+          ))}
+        </select>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
+        <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
+        <input placeholder="اسم العميل" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
+        <input dir="ltr" placeholder="01xxxxxxxxx" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
+        <input dir="ltr" placeholder="الإيميل (اختياري)" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100" />
+        <input placeholder="ملاحظات (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} className="rounded-sm border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 sm:col-span-2" />
+      </div>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      <button onClick={handleSubmit} disabled={saving} className="mt-3 rounded-sm bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-500 disabled:opacity-50">
+        {saving ? "جاري الحفظ..." : "تسجيل الحجز"}
+      </button>
     </div>
   );
 }

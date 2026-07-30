@@ -63,6 +63,44 @@ export async function deleteBooking(bookingId: string) {
   await prisma.booking.delete({ where: { id: bookingId } });
 }
 
+export async function createBookingAdmin(input: {
+  setId: string;
+  categoryId: string;
+  tierHours: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  date: string;
+  startTime: string;
+  notes?: string;
+}) {
+  requirePermission("canBookings");
+
+  const tier = await prisma.pricingTier.findFirst({
+    where: { categoryId: input.categoryId, hours: input.tierHours },
+  });
+  if (!tier) throw new Error("الباقة غير متاحة");
+
+  const depositAmount = Math.round((tier.price * 0.2) / 50) * 50;
+
+  await prisma.booking.create({
+    data: {
+      setId: input.setId,
+      categoryId: input.categoryId,
+      tierHours: input.tierHours,
+      customerName: input.customerName,
+      customerPhone: input.customerPhone,
+      customerEmail: input.customerEmail || "no-email@vockstudio.com",
+      date: new Date(`${input.date}T00:00:00`),
+      startTime: input.startTime,
+      price: tier.price,
+      depositAmount,
+      notes: input.notes,
+      status: "confirmed", // حجز يدوي من الأدمن بيتحط مؤكد على طول
+    },
+  });
+}
+
 export async function getAllBookings() {
   requirePermission("canBookings");
   return prisma.booking.findMany({

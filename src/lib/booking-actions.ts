@@ -21,6 +21,8 @@ export type BookingInput = z.infer<typeof bookingSchema>;
 
 export type SlotStatus = { time: string; available: boolean };
 
+const PENDING_EXPIRY_MS = 2 * 60 * 60 * 1000; // ساعتين
+
 export async function getAvailableSlots(setId: string, date: string): Promise<SlotStatus[]> {
   const dayStart = new Date(`${date}T00:00:00`);
   const dayEnd = new Date(`${date}T23:59:59`);
@@ -39,10 +41,18 @@ export async function getAvailableSlots(setId: string, date: string): Promise<Sl
       date: { gte: dayStart, lte: dayEnd },
       status: { in: ["pending_deposit", "pending_verification", "confirmed"] },
     },
-    select: { startTime: true },
+    select: { startTime: true, status: true, createdAt: true },
   });
 
-  const taken = new Set(existing.map((b) => b.startTime));
+  // حجز لسه "مستني تحويل" (العميل ما رفعش صورة إثبات) من أكتر من ساعتين
+  // بيعتبر متروك، ومنسيبوش يقفل المعاد للأبد.
+  const now = Date.now();
+  const stillBlocking = existing.filter((b) => {
+    if (b.status !== "pending_deposit") return true;
+    return now - b.createdAt.getTime() < PENDING_EXPIRY_MS;
+  });
+
+  const taken = new Set(stillBlocking.map((b) => b.startTime));
   return DAILY_SLOTS.map((time) => ({ time, available: !taken.has(time) }));
 }
 
@@ -87,7 +97,10 @@ export async function createBooking(input: BookingInput) {
       setId: data.setId,
       date: { gte: dayStart, lte: dayEnd },
       startTime: data.startTime,
-      status: { in: ["pending_deposit", "pending_verification", "confirmed"] },
+      OR: [
+        { status: { in: ["pending_verification", "confirmed"] } },
+        { status: "pending_deposit", createdAt: { gte: new Date(Date.now() - PENDING_EXPIRY_MS) } },
+      ],
     },
   });
   if (clash) return { error: "الميعاد ده اتحجز لحظة قبلك، اختار وقت تاني" };

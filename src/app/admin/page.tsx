@@ -20,7 +20,7 @@ export default async function AdminPage() {
     ? await prisma.blockedSlot.findMany({ orderBy: { date: "asc" } })
     : [];
 
-  const categories = user.canPricing
+  const categories = user.canPricing || user.canBookings
     ? await prisma.pricingCategory.findMany({ orderBy: { sortOrder: "asc" }, include: { tiers: { orderBy: { hours: "asc" } } } })
     : [];
 

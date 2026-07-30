@@ -100,10 +100,11 @@ export type SiteSettingsData = {
 };
 
 // بيصيغ رقم الموبايل المصري (01xxxxxxxxx) لصيغة دولية (20xxxxxxxxxx) للينكات واتساب
-export function toWhatsappLink(localNumber: string): string {
+export function toWhatsappLink(localNumber: string, message?: string): string {
   const digits = localNumber.replace(/\D/g, "");
   const intl = digits.startsWith("0") ? "2" + digits : digits;
-  return `https://wa.me/${intl}`;
+  const base = `https://wa.me/${intl}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
 export const CANCELLATION_POLICY =

@@ -22,10 +22,12 @@ export default async function ConfirmBookingPage({ params }: { params: { booking
         packageName={packageName}
         date={booking.date.toISOString().slice(0, 10)}
         startTime={booking.startTime}
+        durationHours={booking.tierHours}
         depositAmount={booking.depositAmount}
         customerName={booking.customerName}
         initialStatus={booking.status}
         transferNumber={settings.transferNumber}
+        address={settings.address}
       />
     </section>
   );
