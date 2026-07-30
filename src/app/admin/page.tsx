@@ -6,7 +6,7 @@ import AdminDashboard from "@/components/AdminDashboard";
 
 export default async function AdminPage() {
   const user = getCurrentUser();
-  if (!user) redirect("/admin/login");
+  if (!user) return redirect("/admin/login");
 
   const bookings = user.canBookings
     ? await prisma.booking.findMany({ orderBy: { date: "asc" }, include: { set: true, category: true } })
