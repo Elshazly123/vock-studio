@@ -90,6 +90,8 @@ model TeamMember {
   canPricing   Boolean  @default(false)
   canTeam      Boolean  @default(false)
   canSettings  Boolean  @default(false)
+  failedAttempts Int    @default(0)
+  lockedUntil    DateTime?
   createdAt    DateTime @default(now())
 }
 

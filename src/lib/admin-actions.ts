@@ -15,12 +15,42 @@ function requirePermission(key: "canBookings" | "canSets" | "canPricing" | "canT
 
 // ---------- تسجيل الدخول / الخروج ----------
 
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 دقيقة
+
 export async function login(username: string, password: string) {
   const member = await prisma.teamMember.findUnique({ where: { username } });
   if (!member) return { error: "اسم المستخدم أو كلمة السر غلط" };
 
+  if (member.lockedUntil && member.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((member.lockedUntil.getTime() - Date.now()) / 60000);
+    return { error: `الحساب مقفول مؤقتًا بعد محاولات كتير غلط. حاول تاني بعد ${minutesLeft} دقيقة.` };
+  }
+
   const ok = await verifyPassword(password, member.passwordHash);
-  if (!ok) return { error: "اسم المستخدم أو كلمة السر غلط" };
+  if (!ok) {
+    const nextAttempts = member.failedAttempts + 1;
+    const shouldLock = nextAttempts >= MAX_FAILED_ATTEMPTS;
+    await prisma.teamMember.update({
+      where: { id: member.id },
+      data: {
+        failedAttempts: shouldLock ? 0 : nextAttempts,
+        lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_MS) : null,
+      },
+    });
+    if (shouldLock) {
+      return { error: "محاولات كتير غلط. الحساب مقفول 15 دقيقة لحمايتك." };
+    }
+    return { error: "اسم المستخدم أو كلمة السر غلط" };
+  }
+
+  // دخول ناجح: نصفّر أي محاولات فاشلة سابقة
+  if (member.failedAttempts > 0 || member.lockedUntil) {
+    await prisma.teamMember.update({
+      where: { id: member.id },
+      data: { failedAttempts: 0, lockedUntil: null },
+    });
+  }
 
   const token = signSession({
     id: member.id,
