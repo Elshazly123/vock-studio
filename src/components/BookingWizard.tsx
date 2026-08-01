@@ -176,7 +176,7 @@ export default function BookingWizard({
         <div>
           <div className="card-frame mb-6 flex items-center justify-between p-4">
             <span className="text-sm text-neutral-100">{pkg.name}</span>
-            <button onClick={() => setStep(1)} className="font-mono text-xs text-orange-500 hover:underline">
+            <button onClick={() => { setStep(1); setCouponApplied(null); setCouponInput(""); setCouponError(null); }} className="font-mono text-xs text-orange-500 hover:underline">
               تغيير الباقة
             </button>
           </div>

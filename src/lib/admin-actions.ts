@@ -188,7 +188,7 @@ export async function addSet() {
 
 export async function updateSet(
   id: string,
-  fields: { name?: string; tag?: string; description?: string }
+  fields: { name?: string; tag?: string; description?: string; isActive?: boolean }
 ) {
   requirePermission("canSets");
   await prisma.set.update({ where: { id }, data: fields });
@@ -196,7 +196,15 @@ export async function updateSet(
 
 export async function deleteSet(id: string) {
   requirePermission("canSets");
-  await prisma.set.delete({ where: { id } });
+  try {
+    await prisma.set.delete({ where: { id } });
+    return { mode: "deleted" as const };
+  } catch {
+    // فيه حجوزات مرتبطة بالسيت ده، فمينفعش يتمسح نهائي (عشان محتفظين بسجل
+    // الحجوزات القديمة). بدل كده بنخفيه من الموقع بس (isActive: false).
+    await prisma.set.update({ where: { id }, data: { isActive: false } });
+    return { mode: "archived" as const };
+  }
 }
 
 // الصورة بتتخزن كـ data URL جوه عمود images (JSON array) بدل ملف على الديسك —
@@ -257,7 +265,19 @@ export async function addCategory(input: { label: string; includes: string[] }) 
 
 export async function deleteCategory(id: string) {
   requirePermission("canPricing");
-  await prisma.pricingCategory.delete({ where: { id } });
+  try {
+    await prisma.pricingCategory.delete({ where: { id } });
+    return { mode: "deleted" as const };
+  } catch {
+    // فيه حجوزات مرتبطة بالفئة دي، فبنخفيها بدل ما نمسحها نهائي
+    await prisma.pricingCategory.update({ where: { id }, data: { isActive: false } });
+    return { mode: "archived" as const };
+  }
+}
+
+export async function setCategoryActive(id: string, isActive: boolean) {
+  requirePermission("canPricing");
+  await prisma.pricingCategory.update({ where: { id }, data: { isActive } });
 }
 
 export async function addTier(categoryId: string, hours: number, price: number, original: number) {

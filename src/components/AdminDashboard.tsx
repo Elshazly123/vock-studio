@@ -17,6 +17,7 @@ import {
   updateTier,
   addCategory,
   deleteCategory,
+  setCategoryActive,
   addTier,
   deleteTier,
   addTeamMember,
@@ -56,10 +57,11 @@ type SetRow = {
   tag: string;
   description: string;
   images: string; // JSON string
+  isActive: boolean;
 };
 
 type TierRow = { id: string; hours: number; price: number; original: number };
-type CategoryRow = { id: string; key: string; label: string; tiers: TierRow[] };
+type CategoryRow = { id: string; key: string; label: string; isActive: boolean; tiers: TierRow[] };
 type SettingsRow = {
   whatsappNumber: string;
   address: string;
@@ -431,7 +433,10 @@ function SetsTab({ sets }: { sets: SetRow[] }) {
 
   async function handleDelete(id: string) {
     setBusy(true);
-    await deleteSet(id);
+    const res = await deleteSet(id);
+    if (res.mode === "archived") {
+      alert("السيت ده ليه حجوزات مسجلة عليه، فمينفعش يتمسح نهائي — تم إخفاؤه من الموقع بدل كده (مش هيبان للعملاء، لكن سجل حجوزاته القديمة محفوظ).");
+    }
     router.refresh();
     setBusy(false);
   }
@@ -461,10 +466,28 @@ function SetsTab({ sets }: { sets: SetRow[] }) {
           const images: string[] = JSON.parse(s.images || "[]");
           return (
             <div key={s.id} className="rounded-sm border border-neutral-800 bg-neutral-900 p-4">
-              <div className="mb-2 flex justify-end">
-                <button onClick={() => handleDelete(s.id)} className="text-xs text-neutral-500 hover:text-red-400">
-                  حذف السيت ✕
-                </button>
+              <div className="mb-2 flex items-center justify-between">
+                {!s.isActive && (
+                  <span className="rounded-sm bg-neutral-800 px-2 py-0.5 font-mono text-[10px] text-neutral-400">
+                    مخفي من الموقع
+                  </span>
+                )}
+                <div className="mr-auto flex gap-3">
+                  {!s.isActive && (
+                    <button
+                      onClick={async () => {
+                        await updateSet(s.id, { isActive: true });
+                        router.refresh();
+                      }}
+                      className="text-xs text-orange-400 hover:underline"
+                    >
+                      إظهار تاني
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(s.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                    حذف السيت ✕
+                  </button>
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <EditableField label="اسم السيت" initial={s.name} onSave={(v) => handleUpdate(s.id, "name", v)} />
@@ -561,7 +584,10 @@ function PricingTab({ categories }: { categories: CategoryRow[] }) {
   }
 
   async function handleDeleteCategory(id: string) {
-    await deleteCategory(id);
+    const res = await deleteCategory(id);
+    if (res.mode === "archived") {
+      alert("الفئة دي ليها حجوزات مسجلة عليها، فمينفعش تتمسح نهائي — تم إخفاؤها من الموقع بدل كده.");
+    }
     router.refresh();
   }
 
@@ -577,10 +603,28 @@ function PricingTab({ categories }: { categories: CategoryRow[] }) {
         {categories.map((cat) => (
           <div key={cat.id} className="rounded-sm border border-neutral-800 bg-neutral-900 p-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-neutral-50">{cat.label}</h3>
-              <button onClick={() => handleDeleteCategory(cat.id)} className="text-xs text-neutral-500 hover:text-red-400">
-                حذف الفئة ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-neutral-50">{cat.label}</h3>
+                {!cat.isActive && (
+                  <span className="rounded-sm bg-neutral-800 px-2 py-0.5 font-mono text-[10px] text-neutral-400">مخفي</span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                {!cat.isActive && (
+                  <button
+                    onClick={async () => {
+                      await setCategoryActive(cat.id, true);
+                      router.refresh();
+                    }}
+                    className="text-xs text-orange-400 hover:underline"
+                  >
+                    إظهار تاني
+                  </button>
+                )}
+                <button onClick={() => handleDeleteCategory(cat.id)} className="text-xs text-neutral-500 hover:text-red-400">
+                  حذف الفئة ✕
+                </button>
+              </div>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {cat.tiers.map((tier) => (

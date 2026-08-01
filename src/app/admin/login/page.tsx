@@ -26,9 +26,6 @@ export default function AdminLoginPage() {
   return (
     <section className="mx-auto max-w-sm px-5 py-24 text-center">
       <h1 className="font-black tracking-tight text-xl text-neutral-50">لوحة التحكم</h1>
-      <p className="mt-2 text-sm text-neutral-400">
-        حساب صاحب الاستوديو الافتراضي: <span dir="ltr">admin / admin123</span>
-      </p>
       <input
         placeholder="اسم المستخدم"
         value={username}
