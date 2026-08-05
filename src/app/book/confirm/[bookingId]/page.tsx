@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import DepositPayment from "@/components/DepositPayment";
 import { hoursLabel } from "@/lib/types";
 import { getSettings } from "@/lib/settings";
+import { getLocale } from "@/lib/locale";
 
 export default async function ConfirmBookingPage({ params }: { params: { bookingId: string } }) {
   const booking = await prisma.booking.findUnique({
@@ -12,13 +13,16 @@ export default async function ConfirmBookingPage({ params }: { params: { booking
   if (!booking) notFound();
 
   const settings = await getSettings();
-  const packageName = `${booking.category.label} · ${booking.tierHours} ${hoursLabel(booking.tierHours)}`;
+  const locale = getLocale();
+  const categoryLabel = locale === "ar" ? booking.category.label : booking.category.labelEn || booking.category.label;
+  const packageName = `${categoryLabel} · ${booking.tierHours} ${hoursLabel(booking.tierHours, locale)}`;
+  const setName = locale === "ar" ? booking.set.name : booking.set.nameEn || booking.set.name;
 
   return (
     <section className="mx-auto max-w-lg px-5 py-16">
       <DepositPayment
         bookingId={booking.id}
-        setName={booking.set.name}
+        setName={setName}
         packageName={packageName}
         date={booking.date.toISOString().slice(0, 10)}
         startTime={booking.startTime}
@@ -28,6 +32,7 @@ export default async function ConfirmBookingPage({ params }: { params: { booking
         initialStatus={booking.status}
         transferNumber={settings.transferNumber}
         address={settings.address}
+        locale={locale}
       />
     </section>
   );

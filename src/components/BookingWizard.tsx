@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PackagePicker, { type SelectedPackage } from "./PackagePicker";
 import { createBooking, getAvailableSlots, joinWaitlist, validateCoupon, type SlotStatus } from "@/lib/booking-actions";
-import { CANCELLATION_POLICY, hoursLabel, type PricingCategoryData } from "@/lib/types";
+import { cancellationPolicy, hoursLabel, formatEGP, type PricingCategoryData } from "@/lib/types";
+import { t, type Locale } from "@/lib/i18n";
 
 type Step = 1 | 2 | 3;
 
@@ -17,18 +18,21 @@ export default function BookingWizard({
   setName,
   categories,
   preselected,
+  locale,
 }: {
   setId: string;
   setName: string;
   categories: PricingCategoryData[];
   preselected?: { categoryId: string; hours: number };
+  locale: Locale;
 }) {
   const router = useRouter();
+  const s = t(locale);
 
   const initialPackage = (() => {
     if (!preselected) return null;
     const cat = categories.find((c) => c.id === preselected.categoryId);
-    const tier = cat?.tiers.find((t) => t.hours === preselected.hours);
+    const tier = cat?.tiers.find((ti) => ti.hours === preselected.hours);
     if (!cat || !tier) return null;
     return {
       categoryId: cat.id,
@@ -37,7 +41,7 @@ export default function BookingWizard({
       price: tier.price,
       original: tier.original,
       deposit: Math.round((tier.price * 0.2) / 50) * 50,
-      name: cat.label + " · " + tier.hours + " " + hoursLabel(tier.hours),
+      name: cat.label + " · " + tier.hours + " " + hoursLabel(tier.hours, locale),
     };
   })();
 
@@ -131,23 +135,23 @@ export default function BookingWizard({
   return (
     <div>
       <ol className="mb-8 flex items-center gap-3">
-        {([1, 2, 3] as Step[]).map((s, i) => (
-          <div key={s} className="flex items-center gap-3">
+        {([1, 2, 3] as Step[]).map((step_, i) => (
+          <div key={step_} className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span
                 className={
                   "flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs " +
-                  (step === s
+                  (step === step_
                     ? "bg-orange-600 text-white"
-                    : step > s
+                    : step > step_
                     ? "border border-orange-500 text-orange-500"
                     : "border border-neutral-700 text-neutral-500")
                 }
               >
-                {s}
+                {step_}
               </span>
-              <span className={"text-xs " + (step === s ? "text-neutral-100" : "text-neutral-500")}>
-                {s === 1 ? "الباقة" : s === 2 ? "الميعاد" : "بياناتك"}
+              <span className={"text-xs " + (step === step_ ? "text-neutral-100" : "text-neutral-500")}>
+                {step_ === 1 ? s.step_package : step_ === 2 ? s.step_time : s.step_details}
               </span>
             </div>
             {i < 2 && <span className="h-px w-6 bg-neutral-800" />}
@@ -161,13 +165,14 @@ export default function BookingWizard({
             categories={categories}
             selectedId={pkg ? pkg.categoryId + "-" + pkg.hours : null}
             onSelect={setPkg}
+            locale={locale}
           />
           <button
             disabled={!pkg}
             onClick={() => setStep(2)}
             className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-30"
           >
-            التالي: اختار الميعاد
+            {s.next_pick_time}
           </button>
         </div>
       )}
@@ -177,11 +182,11 @@ export default function BookingWizard({
           <div className="card-frame mb-6 flex items-center justify-between p-4">
             <span className="text-sm text-neutral-100">{pkg.name}</span>
             <button onClick={() => { setStep(1); setCouponApplied(null); setCouponInput(""); setCouponError(null); }} className="font-mono text-xs text-orange-500 hover:underline">
-              تغيير الباقة
+              {s.change_package}
             </button>
           </div>
 
-          <label className="mb-2 block text-sm text-neutral-400">اختار اليوم</label>
+          <label className="mb-2 block text-sm text-neutral-400">{s.pick_day}</label>
           <input
             type="date"
             min={todayISO()}
@@ -190,32 +195,32 @@ export default function BookingWizard({
             className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-3 font-mono text-sm text-neutral-100"
           />
 
-          <p className="mb-2 mt-5 text-sm text-neutral-400">الأوقات</p>
+          <p className="mb-2 mt-5 text-sm text-neutral-400">{s.available_times}</p>
           {loadingSlots ? (
-            <p className="text-sm text-neutral-500">بنجيب الأوقات...</p>
-          ) : availableSlots.every((s) => !s.available) ? (
+            <p className="text-sm text-neutral-500">{s.loading_times}</p>
+          ) : availableSlots.every((slot) => !slot.available) ? (
             <div>
-              <p className="text-sm text-red-400">مفيش أوقات فاضية في اليوم ده.</p>
+              <p className="text-sm text-red-400">{s.no_times}</p>
               {waitlistSent ? (
-                <p className="mt-3 text-sm text-orange-400">تمام، هنبلغك أول ما يفضى ميعاد في اليوم ده.</p>
+                <p className="mt-3 text-sm text-orange-400">{s.waitlist_done}</p>
               ) : (
                 <div className="mt-3 rounded-sm border border-dashed border-neutral-700 p-4">
-                  <p className="mb-3 text-sm text-neutral-300">سجّل اهتمامك وهنبلغك لو حد لغى:</p>
+                  <p className="mb-3 text-sm text-neutral-300">{s.waitlist_intro}</p>
                   <input
-                    placeholder="الاسم"
+                    placeholder={s.waitlist_name}
                     value={waitlistName}
                     onChange={(e) => setWaitlistName(e.target.value)}
                     className="mb-2 w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
                   />
                   <input
-                    placeholder="01xxxxxxxxx"
+                    placeholder={s.waitlist_phone}
                     dir="ltr"
                     value={waitlistPhone}
                     onChange={(e) => setWaitlistPhone(e.target.value)}
                     className="mb-3 w-full rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
                   />
                   <button onClick={handleJoinWaitlist} className="btn-secondary w-full">
-                    سجّلني في قايمة الانتظار
+                    {s.waitlist_submit}
                   </button>
                 </div>
               )}
@@ -227,7 +232,6 @@ export default function BookingWizard({
                   key={slot.time}
                   onClick={() => slot.available && setTime(slot.time)}
                   disabled={!slot.available}
-                  title={slot.available ? undefined : "محجوز"}
                   className={
                     "rounded-sm border px-2 py-2 font-mono text-xs " +
                     (!slot.available
@@ -242,8 +246,8 @@ export default function BookingWizard({
               ))}
             </div>
           )}
-          {!loadingSlots && availableSlots.some((s) => !s.available) && (
-            <p className="mt-2 font-mono text-[10px] text-neutral-600">الأوقات المشطوبة محجوزة بالفعل.</p>
+          {!loadingSlots && availableSlots.some((slot) => !slot.available) && (
+            <p className="mt-2 font-mono text-[10px] text-neutral-600">{s.booked_times_note}</p>
           )}
 
           <button
@@ -251,7 +255,7 @@ export default function BookingWizard({
             onClick={() => setStep(3)}
             className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-30"
           >
-            التالي: بياناتك
+            {s.next_your_details}
           </button>
         </div>
       )}
@@ -259,21 +263,21 @@ export default function BookingWizard({
       {step === 3 && pkg && (
         <div>
           <div className="card-frame mb-5 space-y-1 p-4 text-sm text-neutral-300">
-            <p><span className="text-neutral-500">الباقة: </span>{pkg.name}</p>
-            <p><span className="text-neutral-500">الميعاد: </span>{date} — {time}</p>
+            <p><span className="text-neutral-500">{s.package_label}: </span>{pkg.name}</p>
+            <p><span className="text-neutral-500">{s.time_label}: </span>{date} — {time}</p>
             {couponApplied ? (
               <>
-                <p><span className="text-neutral-500">السعر بعد الخصم: </span><span className="text-orange-500">{couponApplied.finalPrice} ج.م</span></p>
-                <p><span className="text-neutral-500">الديبوزيت: </span><span className="text-orange-500">{Math.round((couponApplied.finalPrice * 0.2) / 50) * 50} ج.م</span></p>
+                <p><span className="text-neutral-500">{locale === "ar" ? "السعر بعد الخصم" : "Discounted price"}: </span><span className="text-orange-500">{formatEGP(couponApplied.finalPrice, locale)}</span></p>
+                <p><span className="text-neutral-500">{s.deposit_label}: </span><span className="text-orange-500">{formatEGP(Math.round((couponApplied.finalPrice * 0.2) / 50) * 50, locale)}</span></p>
               </>
             ) : (
-              <p><span className="text-neutral-500">الديبوزيت: </span><span className="text-orange-500">{pkg.deposit} ج.م</span></p>
+              <p><span className="text-neutral-500">{s.deposit_label}: </span><span className="text-orange-500">{formatEGP(pkg.deposit, locale)}</span></p>
             )}
           </div>
 
           <div className="mb-5 flex gap-2">
             <input
-              placeholder="كود خصم (اختياري)"
+              placeholder={s.coupon_placeholder}
               dir="ltr"
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value)}
@@ -285,34 +289,34 @@ export default function BookingWizard({
               disabled={couponChecking || !!couponApplied || !couponInput.trim()}
               className="rounded-sm border border-orange-500 px-4 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-600 hover:text-white disabled:opacity-40"
             >
-              {couponChecking ? "..." : couponApplied ? "اتطبّق ✓" : "تطبيق"}
+              {couponChecking ? "..." : couponApplied ? s.coupon_applied : s.coupon_apply}
             </button>
           </div>
           {couponError && <p className="-mt-3 mb-4 text-xs text-red-400">{couponError}</p>}
 
           <div className="space-y-3">
             <input
-              placeholder="الاسم بالكامل"
+              placeholder={s.full_name}
               value={form.customerName}
               onChange={(e) => setForm({ ...form, customerName: e.target.value })}
               className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600"
             />
             <input
-              placeholder="01xxxxxxxxx"
+              placeholder={s.phone}
               dir="ltr"
               value={form.customerPhone}
               onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
               className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600"
             />
             <input
-              placeholder="name@email.com"
+              placeholder={s.email}
               dir="ltr"
               value={form.customerEmail}
               onChange={(e) => setForm({ ...form, customerEmail: e.target.value })}
               className="w-full rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-100 placeholder:text-neutral-600"
             />
             <textarea
-              placeholder="ملاحظات (اختياري)"
+              placeholder={s.notes_optional}
               rows={2}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -322,7 +326,7 @@ export default function BookingWizard({
 
           <label className="mt-4 flex items-start gap-2 text-xs text-neutral-400">
             <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5" />
-            <span>{CANCELLATION_POLICY}</span>
+            <span>{cancellationPolicy(locale)}</span>
           </label>
 
           {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
@@ -332,7 +336,7 @@ export default function BookingWizard({
             onClick={handleSubmit}
             className="btn-primary mt-4 w-full disabled:cursor-not-allowed disabled:opacity-30"
           >
-            {submitting ? "جاري الحجز..." : "أكمل الحجز وادفع الديبوزيت"}
+            {submitting ? s.submitting : s.submit_booking}
           </button>
         </div>
       )}

@@ -1,3 +1,5 @@
+import type { Locale } from "./i18n";
+
 export type SetSummary = {
   id: string;
   slug: string;
@@ -7,6 +9,10 @@ export type SetSummary = {
   description: string;
   amenities: string[];
   images: string[];
+  nameEn: string;
+  tagEn: string;
+  descriptionEn: string;
+  amenitiesEn: string[];
 };
 
 export function parseSet(s: {
@@ -18,11 +24,30 @@ export function parseSet(s: {
   description: string;
   amenities: string;
   images: string;
+  nameEn?: string;
+  tagEn?: string;
+  descriptionEn?: string;
+  amenitiesEn?: string;
 }): SetSummary {
   return {
     ...s,
     amenities: safeJsonArray(s.amenities),
     images: safeJsonArray(s.images),
+    nameEn: s.nameEn ?? "",
+    tagEn: s.tagEn ?? "",
+    descriptionEn: s.descriptionEn ?? "",
+    amenitiesEn: safeJsonArray(s.amenitiesEn ?? "[]"),
+  };
+}
+
+// بيرجع نسخة السيت بلغة العرض المطلوبة (بيرجع للعربي لو الترجمة الإنجليزية لسه فاضية)
+export function localizeSet(s: SetSummary, locale: Locale) {
+  if (locale === "ar") return { name: s.name, tag: s.tag, description: s.description, amenities: s.amenities };
+  return {
+    name: s.nameEn || s.name,
+    tag: s.tagEn || s.tag,
+    description: s.descriptionEn || s.description,
+    amenities: s.amenitiesEn.length ? s.amenitiesEn : s.amenities,
   };
 }
 
@@ -35,8 +60,8 @@ function safeJsonArray(value: string): string[] {
   }
 }
 
-export function formatEGP(amount: number): string {
-  return new Intl.NumberFormat("ar-EG", {
+export function formatEGP(amount: number, locale: Locale = "ar"): string {
+  return new Intl.NumberFormat(locale === "ar" ? "ar-EG" : "en-US", {
     style: "currency",
     currency: "EGP",
     maximumFractionDigits: 0,
@@ -49,8 +74,9 @@ export function depositFor(price: number): number {
   return Math.round((price * DEPOSIT_PERCENT) / 50) * 50;
 }
 
-// صيغة الجمع الصحيحة للساعات بالعربي: 1=ساعة، 2=ساعتين، 3-10=ساعات، 11+=ساعة (تمييز)
-export function hoursLabel(hours: number): string {
+// صيغة الجمع الصحيحة للساعات: عربي (1=ساعة، 2=ساعتين، 3-10=ساعات، 11+=ساعة تمييز) أو إنجليزي بسيط
+export function hoursLabel(hours: number, locale: Locale = "ar"): string {
+  if (locale === "en") return hours === 1 ? "hour" : "hours";
   if (hours === 1) return "ساعة";
   if (hours === 2) return "ساعتين";
   if (hours >= 3 && hours <= 10) return "ساعات";
@@ -76,6 +102,8 @@ export type PricingCategoryData = {
   key: string;
   label: string;
   includes: string[];
+  labelEn: string;
+  includesEn: string[];
   tiers: PricingTierData[];
 };
 
@@ -84,9 +112,24 @@ export function parseCategory(c: {
   key: string;
   label: string;
   includes: string;
+  labelEn?: string;
+  includesEn?: string;
   tiers: { id: string; hours: number; price: number; original: number }[];
 }): PricingCategoryData {
-  return { ...c, includes: safeJsonArray(c.includes) };
+  return {
+    ...c,
+    includes: safeJsonArray(c.includes),
+    labelEn: c.labelEn ?? "",
+    includesEn: safeJsonArray(c.includesEn ?? "[]"),
+  };
+}
+
+export function localizeCategory(c: PricingCategoryData, locale: Locale) {
+  if (locale === "ar") return { label: c.label, includes: c.includes };
+  return {
+    label: c.labelEn || c.label,
+    includes: c.includesEn.length ? c.includesEn : c.includes,
+  };
 }
 
 export type SiteSettingsData = {
@@ -107,5 +150,9 @@ export function toWhatsappLink(localNumber: string, message?: string): string {
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
 
-export const CANCELLATION_POLICY =
-  "لو حبيت تلغي أو تأجل الحجز قبل الميعاد بـ 24 ساعة أو أكتر، بنرجعلك الديبوزيت كامل. الإلغاء في أقل من 24 ساعة من الميعاد، الديبوزيت مش قابل للاسترداد.";
+export function cancellationPolicy(locale: Locale): string {
+  if (locale === "en") {
+    return "If you cancel or reschedule 24 hours or more before your session, we'll refund the full deposit. Cancelling less than 24 hours before is non-refundable.";
+  }
+  return "لو حبيت تلغي أو تأجل الحجز قبل الميعاد بـ 24 ساعة أو أكتر، بنرجعلك الديبوزيت كامل. الإلغاء في أقل من 24 ساعة من الميعاد، الديبوزيت مش قابل للاسترداد.";
+}

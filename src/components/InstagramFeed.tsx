@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { t, type Locale } from "@/lib/i18n";
 
 declare global {
   interface Window {
@@ -8,7 +9,9 @@ declare global {
   }
 }
 
-export default function InstagramFeed({ posts }: { posts: string[] }) {
+export default function InstagramFeed({ posts, locale }: { posts: string[]; locale: Locale }) {
+  const s = t(locale);
+
   useEffect(() => {
     if (posts.length === 0) return;
 
@@ -28,8 +31,8 @@ export default function InstagramFeed({ posts }: { posts: string[] }) {
   return (
     <section className="border-t border-neutral-800">
       <div className="mx-auto max-w-5xl px-5 py-14">
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">من انستجرام</p>
-        <h2 className="mb-6 font-black tracking-tight text-2xl text-neutral-50">آخر شغلنا</h2>
+        <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-orange-500">{s.instagram_eyebrow}</p>
+        <h2 className="mb-6 font-black tracking-tight text-2xl text-neutral-50">{s.instagram_title}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((url) => (
             <blockquote

@@ -3,13 +3,16 @@
 import { useRouter } from "next/navigation";
 import PackagePicker, { type SelectedPackage } from "./PackagePicker";
 import type { PricingCategoryData } from "@/lib/types";
+import type { Locale } from "@/lib/i18n";
 
 export default function BookFromSetPackages({
   setSlug,
   categories,
+  locale,
 }: {
   setSlug: string;
   categories: PricingCategoryData[];
+  locale: Locale;
 }) {
   const router = useRouter();
 
@@ -21,5 +24,5 @@ export default function BookFromSetPackages({
     router.push(`/book/${setSlug}?${params.toString()}`);
   }
 
-  return <PackagePicker categories={categories} onSelect={handleSelect} />;
+  return <PackagePicker categories={categories} onSelect={handleSelect} locale={locale} />;
 }

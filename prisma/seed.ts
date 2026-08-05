@@ -11,6 +11,10 @@ const SETS = [
     description: "مكتب خشبي بإضاءة دافئة وخلفية ستائر داكنة، مناسب لتصوير محتوى بيزنس وبورتريهات جادة.",
     amenities: ["اضاءة دافئة", "تكييف", "خلفية ستائر"],
     images: ["/images/sets/office.jpg"],
+    nameEn: "Black Office Set",
+    tagEn: "Modern / Business",
+    descriptionEn: "A wooden desk with warm lighting and a dark curtain backdrop — great for business content and serious portraits.",
+    amenitiesEn: ["Warm lighting", "A/C", "Curtain backdrop"],
   },
   {
     slug: "boho-corner",
@@ -19,6 +23,10 @@ const SETS = [
     description: "كرسي بيج مريح مع رف مكرمية وسجادة طبيعية، مثالي لجلسات البورتريه الهادئة ومحتوى اللايف ستايل.",
     amenities: ["اضاءة طبيعية", "ديكور بوهيمي", "سجاد طبيعي"],
     images: ["/images/sets/boho1.jpg", "/images/sets/boho2.jpg"],
+    nameEn: "The Boho Corner",
+    tagEn: "Boho / Warm",
+    descriptionEn: "A cozy beige armchair with a macrame shelf and a natural rug — perfect for calm portraits and lifestyle content.",
+    amenitiesEn: ["Natural light", "Boho decor", "Natural rug"],
   },
   {
     slug: "classic-library",
@@ -27,6 +35,10 @@ const SETS = [
     description: "مكتبة خشب داكن بإضاءة خافتة وكرسي جلد كلاسيك، مناسب لجلسات البورتريه الفاخرة والمحتوى الأدبي.",
     amenities: ["اضاءة خافتة دافئة", "ديكور خشبي", "سجاد شرقي"],
     images: ["/images/sets/library.jpg"],
+    nameEn: "Classic Library",
+    tagEn: "Classic / Luxury",
+    descriptionEn: "A dark wood library with warm dim lighting and a classic leather chair — ideal for luxury portraits and literary content.",
+    amenitiesEn: ["Warm dim lighting", "Wooden decor", "Oriental rug"],
   },
   {
     slug: "white-studio",
@@ -35,6 +47,10 @@ const SETS = [
     description: "سيكلوراما أبيض بالكامل مع إضاءة استوديو احترافية، الأنسب لتصوير المنتجات والكتالوجات والفيديو.",
     amenities: ["سيكلوراما أبيض", "اضاءة استوديو", "تحكم كامل في الإضاءة"],
     images: ["/images/sets/white.jpg"],
+    nameEn: "The White Studio",
+    tagEn: "Minimal / Products",
+    descriptionEn: "A full white cyclorama with professional studio lighting — the best fit for product, catalog, and video shoots.",
+    amenitiesEn: ["White cyclorama", "Studio lighting", "Full lighting control"],
   },
   {
     slug: "vintage-room",
@@ -43,6 +59,10 @@ const SETS = [
     description: "ديكور فينتاج بورق حائط وردي وتليفزيون قديم وتليفون دائري، مثالي للمحتوى النوستالجي والتصوير الفني.",
     amenities: ["ديكور فينتاج اصلي", "اضاءة دافئة", "اكسسوارات قديمة"],
     images: ["/images/sets/vintage1.jpg", "/images/sets/vintage2.jpg"],
+    nameEn: "The Vintage Room",
+    tagEn: "Vintage / Nostalgic",
+    descriptionEn: "Vintage decor with pink wallpaper, an old TV, and a rotary phone — perfect for nostalgic content and artistic shoots.",
+    amenitiesEn: ["Genuine vintage decor", "Warm lighting", "Vintage props"],
   },
   {
     slug: "green-podcast",
@@ -51,6 +71,10 @@ const SETS = [
     description: "جدار أخضر داكن مع كرسي مريح ومعدات مايك جاهزة، مصمم خصيصًا لتسجيل البودكاست والمحتوى المرئي.",
     amenities: ["معدات صوت جاهزة", "اضاءة اجواء", "مقاعد مريحة"],
     images: ["/images/sets/podcast.jpg"],
+    nameEn: "Green Podcast Set",
+    tagEn: "Podcast / Content",
+    descriptionEn: "A dark green wall with a comfortable chair and ready mic setup — purpose-built for podcast and video content.",
+    amenitiesEn: ["Ready audio gear", "Mood lighting", "Comfortable seating"],
   },
   {
     slug: "beige-lounge",
@@ -59,6 +83,10 @@ const SETS = [
     description: "صالة أنتريه بيج دافئة بديكور مودرن ونباتات طبيعية، مناسبة لجلسات العائلة والمحتوى اللايف ستايل.",
     amenities: ["اضاءة طبيعية", "نباتات طبيعية", "مساحة واسعة"],
     images: ["/images/sets/lounge.jpg"],
+    nameEn: "The Beige Lounge",
+    tagEn: "Modern / Lounge",
+    descriptionEn: "A warm beige living room with modern decor and real plants — great for family sessions and lifestyle content.",
+    amenitiesEn: ["Natural light", "Real plants", "Spacious"],
   },
 ];
 
@@ -66,8 +94,10 @@ const CATEGORIES = [
   {
     key: "podcast",
     label: "بودكاست",
+    labelEn: "Podcast",
     sortOrder: 1,
     includes: ["لوكيشن", "2 كاميرا", "2 عدسة", "2 مايك", "2 لايت (Litemons)", "مصور فيديو"],
+    includesEn: ["Location", "2 cameras", "2 lenses", "2 mics", "2 lights (Litemons)", "Videographer"],
     tiers: [
       { hours: 1, price: 2550, original: 3650 },
       { hours: 2, price: 4900, original: 7000 },
@@ -78,8 +108,10 @@ const CATEGORIES = [
   {
     key: "reels",
     label: "ريلز",
+    labelEn: "Reels",
     sortOrder: 2,
     includes: ["لوكيشن", "1 كاميرا", "1 عدسة", "1 مايك", "2 لايت (Litemons)", "مصور فيديو", "مونتاج ريل واحد مجانًا"],
+    includesEn: ["Location", "1 camera", "1 lens", "1 mic", "2 lights (Litemons)", "Videographer", "One free reel edit"],
     tiers: [
       { hours: 1, price: 1860, original: 2650 },
       { hours: 2, price: 3480, original: 4950 },
@@ -90,8 +122,10 @@ const CATEGORIES = [
   {
     key: "location",
     label: "تأجير لوكيشن فقط",
+    labelEn: "Location Rental Only",
     sortOrder: 3,
     includes: ["لوكيشن مع Soft Boxes"],
+    includesEn: ["Location with Soft Boxes"],
     tiers: [
       { hours: 1, price: 400, original: 500 },
       { hours: 8, price: 3200, original: 4000 },
@@ -108,7 +142,12 @@ async function main() {
   for (const s of SETS) {
     await prisma.set.upsert({
       where: { slug: s.slug },
-      update: {},
+      update: {
+        nameEn: s.nameEn,
+        tagEn: s.tagEn,
+        descriptionEn: s.descriptionEn,
+        amenitiesEn: JSON.stringify(s.amenitiesEn),
+      },
       create: {
         slug: s.slug,
         name: s.name,
@@ -116,6 +155,10 @@ async function main() {
         description: s.description,
         amenities: JSON.stringify(s.amenities),
         images: JSON.stringify(s.images),
+        nameEn: s.nameEn,
+        tagEn: s.tagEn,
+        descriptionEn: s.descriptionEn,
+        amenitiesEn: JSON.stringify(s.amenitiesEn),
       },
     });
   }
@@ -124,12 +167,20 @@ async function main() {
   for (const cat of CATEGORIES) {
     const created = await prisma.pricingCategory.upsert({
       where: { key: cat.key },
-      update: { label: cat.label, includes: JSON.stringify(cat.includes), sortOrder: cat.sortOrder },
+      update: {
+        label: cat.label,
+        includes: JSON.stringify(cat.includes),
+        sortOrder: cat.sortOrder,
+        labelEn: cat.labelEn,
+        includesEn: JSON.stringify(cat.includesEn),
+      },
       create: {
         key: cat.key,
         label: cat.label,
         sortOrder: cat.sortOrder,
         includes: JSON.stringify(cat.includes),
+        labelEn: cat.labelEn,
+        includesEn: JSON.stringify(cat.includesEn),
       },
     });
 

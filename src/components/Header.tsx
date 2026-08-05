@@ -1,6 +1,9 @@
 import Link from "next/link";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { t, type Locale } from "@/lib/i18n";
 
-export default function Header() {
+export default function Header({ locale }: { locale: Locale }) {
+  const s = t(locale);
   return (
     <header className="border-b border-neutral-800">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
@@ -14,11 +17,12 @@ export default function Header() {
         </Link>
         <nav className="flex items-center gap-3">
           <Link href="/sets" className="text-sm text-neutral-300 hover:text-orange-500">
-            السيتات
+            {s.nav_sets}
           </Link>
           <Link href="/sets" className="btn-primary">
-            احجز دلوقتي
+            {s.nav_book}
           </Link>
+          <LanguageSwitcher locale={locale} />
         </nav>
       </div>
     </header>

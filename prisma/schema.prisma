@@ -19,6 +19,10 @@ model Set {
   description String
   amenities   String // JSON array مخزنة كنص
   images      String // JSON array من مسارات الصور: ["/images/sets/xxx.jpg", ...]
+  nameEn        String  @default("")
+  tagEn         String  @default("")
+  descriptionEn String  @default("")
+  amenitiesEn   String  @default("[]") // JSON array بالإنجليزي
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -32,6 +36,8 @@ model PricingCategory {
   key       String   @unique // "podcast", "reels", ...
   label     String // "بودكاست"
   includes  String // JSON array: ["لوكيشن","2 كاميرا",...]
+  labelEn    String  @default("")
+  includesEn String  @default("[]")
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
 

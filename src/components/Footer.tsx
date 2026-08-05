@@ -1,32 +1,34 @@
 import Link from "next/link";
 import { toWhatsappLink, type SiteSettingsData } from "@/lib/types";
+import { t, type Locale } from "@/lib/i18n";
 
-export default function Footer({ settings }: { settings: SiteSettingsData }) {
+export default function Footer({ settings, locale }: { settings: SiteSettingsData; locale: Locale }) {
+  const s = t(locale);
   return (
     <footer className="border-t border-neutral-800">
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 px-5 py-8 text-sm text-neutral-500 sm:flex-row">
         <p>© {new Date().getFullYear()} VOCK — {settings.address}</p>
         <div className="flex items-center gap-5">
-          <a href={toWhatsappLink(settings.whatsappNumber)} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="واتساب">
+          <a href={toWhatsappLink(settings.whatsappNumber)} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="WhatsApp">
             <WhatsIcon />
           </a>
           {settings.instagramUrl && (
-            <a href={settings.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="انستجرام">
+            <a href={settings.instagramUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="Instagram">
               <InstagramIcon />
             </a>
           )}
           {settings.facebookUrl && (
-            <a href={settings.facebookUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="فيسبوك">
+            <a href={settings.facebookUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="Facebook">
               <FacebookIcon />
             </a>
           )}
           {settings.tiktokUrl && (
-            <a href={settings.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="تيك توك">
+            <a href={settings.tiktokUrl} target="_blank" rel="noreferrer" className="hover:text-orange-500" title="TikTok">
               <TiktokIcon />
             </a>
           )}
           <Link href="/policy" className="hover:text-orange-500">
-            الخصوصية والشروط
+            {s.footer_privacy}
           </Link>
         </div>
       </div>

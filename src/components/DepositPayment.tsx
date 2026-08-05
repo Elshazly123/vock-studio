@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { markTransferSent } from "@/lib/booking-actions";
-import { formatEGP, CANCELLATION_POLICY } from "@/lib/types";
+import { formatEGP, cancellationPolicy } from "@/lib/types";
+import { t, type Locale } from "@/lib/i18n";
 
-// بتاخد صورة مرفوعة من العميل وتصغّرها/تضغطها قبل الإرسال، عشان الحجم يفضل معقول
 function resizeImageFile(file: File, maxWidth = 900): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -30,22 +30,12 @@ function resizeImageFile(file: File, maxWidth = 900): Promise<string> {
   });
 }
 
-// بيبني لينك "أضف لتقويم جوجل" بتاريخ ووقت الجلسة الفعليين
-function buildCalendarLink(input: {
-  title: string;
-  date: string;
-  startTime: string;
-  durationHours: number;
-  location: string;
-  details: string;
-}) {
+function buildCalendarLink(input: { title: string; date: string; startTime: string; durationHours: number; location: string; details: string }) {
   const [h, m] = input.startTime.split(":").map(Number);
   const start = new Date(`${input.date}T00:00:00`);
   start.setHours(h, m, 0, 0);
   const end = new Date(start.getTime() + input.durationHours * 60 * 60 * 1000);
-
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: input.title,
@@ -68,6 +58,7 @@ export default function DepositPayment({
   initialStatus,
   transferNumber,
   address,
+  locale,
 }: {
   bookingId: string;
   setName: string;
@@ -80,7 +71,9 @@ export default function DepositPayment({
   initialStatus: string;
   transferNumber: string;
   address: string;
+  locale: Locale;
 }) {
+  const s = t(locale);
   const [status, setStatus] = useState(initialStatus);
   const [loading, setLoading] = useState(false);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -95,7 +88,7 @@ export default function DepositPayment({
 
   async function handleMarkSent() {
     if (!proofPreview) {
-      setError("لازم ترفع صورة إثبات التحويل الأول");
+      setError(locale === "ar" ? "لازم ترفع صورة إثبات التحويل الأول" : "You need to upload a proof of transfer first");
       return;
     }
     setLoading(true);
@@ -114,27 +107,27 @@ export default function DepositPayment({
       <div className="text-center">
         <p className="mb-3 text-3xl text-orange-500">✓</p>
         <h1 className="font-black tracking-tight text-2xl text-neutral-50">
-          مبروك يا {customerName.split(" ")[0]}، حجزك اتأكد
+          {s.confirmed_greeting} {customerName.split(" ")[0]}, {locale === "ar" ? "حجزك اتأكد" : "your booking is confirmed"}
         </h1>
-        <p className="mt-3 text-sm text-neutral-400">هيوصلك تأكيد بكل التفاصيل على الإيميل والموبايل.</p>
-        <SummaryCard setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel="الديبوزيت المدفوع" />
+        <p className="mt-3 text-sm text-neutral-400">{s.confirmed_body}</p>
+        <SummaryCard s={s} setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel={locale === "ar" ? "الديبوزيت المدفوع" : "Deposit paid"} locale={locale} />
         <a
           href={buildCalendarLink({
-            title: `جلسة تصوير VOCK — ${setName}`,
+            title: `VOCK Studio Session — ${setName}`,
             date,
             startTime,
             durationHours,
             location: address,
-            details: `الباقة: ${packageName}`,
+            details: `${s.package_label}: ${packageName}`,
           })}
           target="_blank"
           rel="noreferrer"
           className="btn-secondary mt-4 inline-flex"
         >
-          📅 ضيفه في تقويم جوجل
+          {s.add_to_calendar}
         </a>
         <br />
-        <Link href="/" className="btn-secondary mt-3 inline-flex">العودة للرئيسية</Link>
+        <Link href="/" className="btn-secondary mt-3 inline-flex">{s.back_home}</Link>
       </div>
     );
   }
@@ -143,12 +136,10 @@ export default function DepositPayment({
     return (
       <div className="text-center">
         <p className="mb-3 text-3xl text-orange-500">⏳</p>
-        <h1 className="font-black tracking-tight text-2xl text-neutral-50">تم استلام إشعارك</h1>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">
-          فريق VOCK هيتأكد من التحويل ويأكد حجزك خلال ساعات. هيوصلك تأكيد على الواتساب أو الموبايل فور ما نتأكد.
-        </p>
-        <SummaryCard setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel="الديبوزيت" />
-        <Link href="/" className="btn-secondary mt-6 inline-flex">العودة للرئيسية</Link>
+        <h1 className="font-black tracking-tight text-2xl text-neutral-50">{s.pending_verification_title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-neutral-400">{s.pending_verification_body}</p>
+        <SummaryCard s={s} setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel={s.deposit_label} locale={locale} />
+        <Link href="/" className="btn-secondary mt-6 inline-flex">{s.back_home}</Link>
       </div>
     );
   }
@@ -156,24 +147,22 @@ export default function DepositPayment({
   return (
     <div className="text-center">
       <p className="mb-3 text-3xl text-orange-500">🔒</p>
-      <h1 className="font-black tracking-tight text-2xl text-neutral-50">حوّل الديبوزيت لتأكيد الحجز</h1>
-      <p className="mt-3 text-sm text-neutral-400">
-        حجزك محجوز مؤقتًا. حوّل الديبوزيت عن طريق فودافون كاش أو InstaPay على الرقم ده:
-      </p>
+      <h1 className="font-black tracking-tight text-2xl text-neutral-50">{s.pending_deposit_title}</h1>
+      <p className="mt-3 text-sm text-neutral-400">{s.pending_deposit_body}</p>
 
       <div className="mt-5 rounded-sm border border-orange-500/40 bg-neutral-900 p-4">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-neutral-500">رقم التحويل</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-neutral-500">{s.transfer_number_label}</p>
         <p dir="ltr" className="mt-1 font-black tracking-tight text-2xl text-orange-500">{transferNumber}</p>
-        <p className="mt-1 text-xs text-neutral-500">فودافون كاش أو InstaPay — أي طريقة تريحك</p>
+        <p className="mt-1 text-xs text-neutral-500">{s.transfer_hint}</p>
       </div>
 
-      <SummaryCard setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel="المطلوب تحويله" bold />
+      <SummaryCard s={s} setName={setName} packageName={packageName} date={date} startTime={startTime} amount={depositAmount} amountLabel={s.required_amount} bold locale={locale} />
 
       <div className="mt-6 text-right">
-        <label className="mb-2 block text-sm text-neutral-400">صورة إثبات التحويل (إجباري)</label>
+        <label className="mb-2 block text-sm text-neutral-400">{s.proof_label}</label>
         {proofPreview ? (
           <div className="relative">
-            <img src={proofPreview} alt="إثبات التحويل" className="max-h-56 w-full rounded-sm border border-neutral-800 object-contain" />
+            <img src={proofPreview} alt="proof" className="max-h-56 w-full rounded-sm border border-neutral-800 object-contain" />
             <button
               onClick={() => setProofPreview(null)}
               className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white"
@@ -184,13 +173,8 @@ export default function DepositPayment({
         ) : (
           <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-neutral-700 text-neutral-500 hover:border-orange-500 hover:text-orange-500">
             <span className="text-2xl">+</span>
-            <span className="text-xs">ارفع صورة سكرين شوت التحويل</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
-            />
+            <span className="text-xs">{s.upload_proof}</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
           </label>
         )}
       </div>
@@ -198,17 +182,16 @@ export default function DepositPayment({
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
       <button onClick={handleMarkSent} disabled={loading || !proofPreview} className="btn-primary mt-6 w-full disabled:opacity-50">
-        {loading ? "جاري التأكيد..." : "حوّلت الديبوزيت ✓"}
+        {loading ? s.marking : s.mark_sent}
       </button>
-      <p className="mt-3 font-mono text-[10px] text-neutral-600">
-        هنراجع التحويل ونأكد حجزك يدويًا. لحد ما نرقّي الموقع لبوابة دفع أوتوماتيكية.
-      </p>
-      <p className="mt-2 text-[11px] text-neutral-500">{CANCELLATION_POLICY}</p>
+      <p className="mt-3 font-mono text-[10px] text-neutral-600">{s.manual_review_note}</p>
+      <p className="mt-2 text-[11px] text-neutral-500">{cancellationPolicy(locale)}</p>
     </div>
   );
 }
 
 function SummaryCard({
+  s,
   setName,
   packageName,
   date,
@@ -216,7 +199,9 @@ function SummaryCard({
   amount,
   amountLabel,
   bold,
+  locale,
 }: {
+  s: ReturnType<typeof t>;
   setName: string;
   packageName: string;
   date: string;
@@ -224,13 +209,14 @@ function SummaryCard({
   amount: number;
   amountLabel: string;
   bold?: boolean;
+  locale: Locale;
 }) {
   return (
     <div className="card-frame mt-6 space-y-2 p-4 text-right text-sm text-neutral-300">
-      <Row label="السيت" value={setName} />
-      <Row label="الباقة" value={packageName} />
-      <Row label="الميعاد" value={`${date} — ${startTime}`} />
-      <Row label={amountLabel} value={formatEGP(amount)} bold={bold} />
+      <Row label={s.set_label} value={setName} />
+      <Row label={s.package_label} value={packageName} />
+      <Row label={s.time_label} value={`${date} — ${startTime}`} />
+      <Row label={amountLabel} value={formatEGP(amount, locale)} bold={bold} />
     </div>
   );
 }

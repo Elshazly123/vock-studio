@@ -1,8 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { SetSummary } from "@/lib/types";
+import { localizeSet, type SetSummary } from "@/lib/types";
+import { t, type Locale } from "@/lib/i18n";
 
-export default function SetCard({ s, index, big }: { s: SetSummary; index: number; big?: boolean }) {
+export default function SetCard({ s, index, big, locale }: { s: SetSummary; index: number; big?: boolean; locale: Locale }) {
+  const l = localizeSet(s, locale);
+  const strings = t(locale);
+
   return (
     <Link
       href={`/sets/${s.slug}`}
@@ -14,14 +18,14 @@ export default function SetCard({ s, index, big }: { s: SetSummary; index: numbe
       {s.images[0] ? (
         <Image
           src={s.images[0]}
-          alt={s.name}
+          alt={l.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
-          <span className="font-mono text-[10px] text-neutral-500">لسه مفيش صور للسيت ده</span>
+          <span className="font-mono text-[10px] text-neutral-500">{strings.no_photos}</span>
         </div>
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
@@ -31,14 +35,14 @@ export default function SetCard({ s, index, big }: { s: SetSummary; index: numbe
       </span>
       {s.images.length > 1 && (
         <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-2 py-1 font-mono text-[10px] text-neutral-300">
-          {s.images.length} صور
+          {s.images.length} {strings.photos_label}
         </span>
       )}
 
       <div className="absolute inset-x-0 bottom-0 p-4">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-orange-400">{s.tag}</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-orange-400">{l.tag}</p>
         <h3 className={"mt-1 font-black tracking-tight text-neutral-50 " + (big ? "text-2xl" : "text-lg")}>
-          {s.name}
+          {l.name}
         </h3>
         <p
           className={
@@ -46,7 +50,7 @@ export default function SetCard({ s, index, big }: { s: SetSummary; index: numbe
             (big ? "line-clamp-3" : "line-clamp-2")
           }
         >
-          {s.description}
+          {l.description}
         </p>
       </div>
     </Link>

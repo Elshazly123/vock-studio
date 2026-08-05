@@ -188,7 +188,7 @@ export async function addSet() {
 
 export async function updateSet(
   id: string,
-  fields: { name?: string; tag?: string; description?: string; isActive?: boolean }
+  fields: { name?: string; tag?: string; description?: string; isActive?: boolean; nameEn?: string; tagEn?: string; descriptionEn?: string }
 ) {
   requirePermission("canSets");
   await prisma.set.update({ where: { id }, data: fields });
