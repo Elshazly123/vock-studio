@@ -57,7 +57,10 @@ export async function getAvailableSlots(setId: string, date: string): Promise<Sl
 }
 
 // بيتأكد إن الكوبون شغال (فعّال، معملش تجاوز الحد، ولسه معملوش انتهاء) ويرجع قيمة الخصم
-export async function validateCoupon(code: string, price: number) {
+export async function validateCoupon(
+  code: string,
+  price: number
+): Promise<{ error: string } | { discount: number; finalPrice: number }> {
   const coupon = await prisma.coupon.findUnique({ where: { code: code.toUpperCase().trim() } });
   if (!coupon || !coupon.isActive) return { error: "الكوبون غير صحيح" };
   if (coupon.expiresAt && coupon.expiresAt < new Date()) return { error: "الكوبون منتهي" };
@@ -69,7 +72,9 @@ export async function validateCoupon(code: string, price: number) {
   return { discount, finalPrice };
 }
 
-export async function createBooking(input: BookingInput) {
+export async function createBooking(
+  input: BookingInput
+): Promise<{ error: string } | { bookingId: string }> {
   const parsed = bookingSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة" };
@@ -148,7 +153,10 @@ export async function createBooking(input: BookingInput) {
   return { bookingId: booking.id };
 }
 
-export async function markTransferSent(bookingId: string, paymentProofUrl: string) {
+export async function markTransferSent(
+  bookingId: string,
+  paymentProofUrl: string
+): Promise<{ error?: string; ok?: boolean }> {
   if (!paymentProofUrl) {
     return { error: "لازم ترفع صورة إثبات التحويل الأول" };
   }

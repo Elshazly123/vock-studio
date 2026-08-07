@@ -729,8 +729,8 @@ function TierEditor({
   onDelete,
 }: {
   tier: TierRow;
-  onSave: (id: string, price: number, original: number) => void;
-  onDelete: (id: string) => void;
+  onSave: (id: string, price: number, original: number) => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
 }) {
   const [price, setPrice] = useState(tier.price);
   const [original, setOriginal] = useState(tier.original);
