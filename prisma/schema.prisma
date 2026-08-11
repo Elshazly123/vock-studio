@@ -123,6 +123,8 @@ model SiteSettings {
   facebookUrl    String?
   tiktokUrl      String?
   instagramPosts String  @default("[]") // JSON array من لينكات بوستات انستجرام مختارة للعرض
+  heroImages     String  @default("[]") // صور مخصصة للهيرو (JSON array) — لو فاضية بيستخدم صور السيتات تلقائيًا
+  heroVideoUrl   String? // لينك فيديو خارجي (mp4) يشتغل بدل الصور في الهيرو لو موجود
 }
 
 // أكواد خصم يتحكم فيها الأدمن — نسبة أو مبلغ ثابت يتخصم من السعر قبل حساب الديبوزيت

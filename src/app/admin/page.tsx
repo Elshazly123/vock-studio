@@ -44,6 +44,8 @@ export default async function AdminPage() {
           facebookUrl: null,
           tiktokUrl: null,
           instagramPosts: [],
+          heroImages: [],
+          heroVideoUrl: null,
         }
       }
     />

@@ -9,18 +9,22 @@ const DEFAULTS: SiteSettingsData = {
   facebookUrl: null,
   tiktokUrl: null,
   instagramPosts: [],
+  heroImages: [],
+  heroVideoUrl: null,
 };
+
+function safeArray(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 export async function getSettings(): Promise<SiteSettingsData> {
   const row = await prisma.siteSettings.findUnique({ where: { id: "main" } });
   if (!row) return DEFAULTS;
-  let instagramPosts: string[] = [];
-  try {
-    const parsed = JSON.parse(row.instagramPosts || "[]");
-    if (Array.isArray(parsed)) instagramPosts = parsed;
-  } catch {
-    instagramPosts = [];
-  }
   return {
     whatsappNumber: row.whatsappNumber,
     address: row.address,
@@ -28,6 +32,8 @@ export async function getSettings(): Promise<SiteSettingsData> {
     instagramUrl: row.instagramUrl,
     facebookUrl: row.facebookUrl,
     tiktokUrl: row.tiktokUrl,
-    instagramPosts,
+    instagramPosts: safeArray(row.instagramPosts),
+    heroImages: safeArray(row.heroImages),
+    heroVideoUrl: row.heroVideoUrl,
   };
 }

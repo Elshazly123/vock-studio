@@ -14,8 +14,8 @@ export const revalidate = 30;
 export default async function HomePage() {
   const raw = await prisma.set.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
   const sets = raw.map(parseSet);
-  const heroFrames = sets.flatMap((s) => s.images).slice(0, 12);
   const settings = await getSettings();
+  const heroFrames = settings.heroImages.length > 0 ? settings.heroImages.slice(0, 12) : sets.flatMap((st) => st.images).slice(0, 12);
   const locale = getLocale();
   const s = t(locale);
   const mapsSrc = "https://maps.google.com/maps?q=" + encodeURIComponent(settings.address) + "&output=embed";
@@ -23,13 +23,24 @@ export default async function HomePage() {
   return (
     <>
       <section className="relative overflow-hidden border-b border-neutral-800">
-        <div className="grid grid-cols-3 gap-[2px] bg-neutral-800 sm:grid-cols-4 lg:grid-cols-6">
-          {heroFrames.map((src, i) => (
-            <div key={i} className="relative aspect-[4/5] overflow-hidden bg-neutral-900">
-              <Image src={src} alt="" fill sizes="20vw" className="object-cover" priority={i < 6} />
-            </div>
-          ))}
-        </div>
+        {settings.heroVideoUrl ? (
+          <video
+            src={settings.heroVideoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="h-[60vh] w-full object-cover sm:h-[70vh]"
+          />
+        ) : (
+          <div className="grid grid-cols-3 gap-[2px] bg-neutral-800 sm:grid-cols-4 lg:grid-cols-6">
+            {heroFrames.map((src, i) => (
+              <div key={i} className="relative aspect-[4/5] overflow-hidden bg-neutral-900">
+                <Image src={src} alt="" fill sizes="20vw" className="object-cover" priority={i < 6} />
+              </div>
+            ))}
+          </div>
+        )}
         <div
           className="absolute inset-0 flex items-center justify-center bg-neutral-950/80"
           style={{

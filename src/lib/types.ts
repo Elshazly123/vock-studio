@@ -140,6 +140,8 @@ export type SiteSettingsData = {
   facebookUrl: string | null;
   tiktokUrl: string | null;
   instagramPosts: string[];
+  heroImages: string[];
+  heroVideoUrl: string | null;
 };
 
 // بيصيغ رقم الموبايل المصري (01xxxxxxxxx) لصيغة دولية (20xxxxxxxxxx) للينكات واتساب

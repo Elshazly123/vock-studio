@@ -34,6 +34,8 @@ import {
   removeWaitlistEntry,
   getStats,
   updateInstagramPosts,
+  updateHeroImages,
+  updateHeroVideo,
 } from "@/lib/admin-actions";
 
 type BookingRow = {
@@ -70,6 +72,8 @@ type SettingsRow = {
   facebookUrl: string | null;
   tiktokUrl: string | null;
   instagramPosts: string[];
+  heroImages: string[];
+  heroVideoUrl: string | null;
 };
 
 type TeamRow = {
@@ -942,6 +946,26 @@ function SettingsTab({ settings }: { settings: SettingsRow }) {
     router.refresh();
   }
 
+  async function handleAddHeroImage(file: File) {
+    const dataUrl = await resizeToDataUrl(file, 1400);
+    const next = [...draft.heroImages, dataUrl];
+    setDraft({ ...draft, heroImages: next });
+    await updateHeroImages(next);
+    router.refresh();
+  }
+
+  async function handleRemoveHeroImage(img: string) {
+    const next = draft.heroImages.filter((i) => i !== img);
+    setDraft({ ...draft, heroImages: next });
+    await updateHeroImages(next);
+    router.refresh();
+  }
+
+  async function handleSaveHeroVideo() {
+    await updateHeroVideo(draft.heroVideoUrl || null);
+    router.refresh();
+  }
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -1044,6 +1068,54 @@ function SettingsTab({ settings }: { settings: SettingsRow }) {
                 <button onClick={() => handleRemovePost(url)} className="text-neutral-500 hover:text-red-400">✕</button>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="rounded-sm border border-dashed border-neutral-700 p-4">
+          <p className="mb-3 font-semibold text-neutral-50">صور/فيديو الصفحة الرئيسية (الهيرو)</p>
+          <p className="mb-3 text-[11px] text-neutral-500">
+            لو حطيت فيديو، هو اللي هيبان بدل شبكة الصور تلقائيًا. سيب رابط الفيديو فاضي عشان ترجع للصور.
+          </p>
+
+          <label className="mb-1 block text-xs text-neutral-500">لينك فيديو (MP4 مباشر، اختياري)</label>
+          <div className="mb-4 flex gap-2">
+            <input
+              dir="ltr"
+              placeholder="https://example.com/hero.mp4"
+              value={draft.heroVideoUrl ?? ""}
+              onChange={(e) => setDraft({ ...draft, heroVideoUrl: e.target.value })}
+              className="flex-1 rounded-sm border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+            />
+            <button onClick={handleSaveHeroVideo} className="rounded-sm border border-orange-500 px-4 py-2 text-xs font-semibold text-orange-400 hover:bg-orange-600 hover:text-white">
+              حفظ
+            </button>
+          </div>
+
+          <label className="mb-2 block text-xs text-neutral-500">صور مخصصة للهيرو (اختياري — لو فاضية بتستخدم صور السيتات تلقائيًا)</label>
+          <div className="flex flex-wrap gap-3">
+            {draft.heroImages.map((img) => (
+              <div key={img} className="relative">
+                <img src={img} alt="" className="h-20 w-20 rounded-sm border border-neutral-800 object-cover" />
+                <button
+                  onClick={() => handleRemoveHeroImage(img)}
+                  className="absolute -left-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-sm border border-dashed border-neutral-700 text-2xl text-neutral-500 hover:border-orange-500 hover:text-orange-500">
+              +
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAddHeroImage(file);
+                }}
+              />
+            </label>
           </div>
         </div>
       </div>

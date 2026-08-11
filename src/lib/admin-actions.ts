@@ -382,6 +382,26 @@ export async function updateInstagramPosts(posts: string[]) {
   });
 }
 
+// ---------- وسائط الهيرو (صور/فيديو الصفحة الرئيسية) ----------
+
+export async function updateHeroImages(images: string[]) {
+  requirePermission("canSettings");
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    update: { heroImages: JSON.stringify(images) },
+    create: { id: "main", heroImages: JSON.stringify(images) },
+  });
+}
+
+export async function updateHeroVideo(url: string | null) {
+  requirePermission("canSettings");
+  await prisma.siteSettings.upsert({
+    where: { id: "main" },
+    update: { heroVideoUrl: url },
+    create: { id: "main", heroVideoUrl: url },
+  });
+}
+
 // ---------- إعدادات الموقع العامة ----------
 
 export async function updateSettings(data: {
