@@ -8,6 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: base, priority: 1 },
     { url: `${base}/sets`, priority: 0.9 },
+    { url: `${base}/pricing`, priority: 0.8 },
     { url: `${base}/policy`, priority: 0.3 },
     ...sets.map((s) => ({ url: `${base}/sets/${s.slug}`, priority: 0.7 })),
   ];

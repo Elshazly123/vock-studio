@@ -32,7 +32,7 @@ export default async function SetDetailPage({ params }: { params: { slug: string
 
       <div className="grid gap-8 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <Gallery images={set.images} alt={l.name} />
+          <Gallery images={set.images} alt={l.name} locale={locale} />
         </div>
         <div className="lg:col-span-2">
           <p className="font-mono text-[11px] uppercase tracking-widest text-orange-500">{l.tag}</p>

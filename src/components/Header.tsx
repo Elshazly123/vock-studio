@@ -19,6 +19,9 @@ export default function Header({ locale }: { locale: Locale }) {
           <Link href="/sets" className="text-sm text-neutral-300 hover:text-orange-500">
             {s.nav_sets}
           </Link>
+          <Link href="/pricing" className="hidden text-sm text-neutral-300 hover:text-orange-500 sm:inline">
+            {s.nav_pricing}
+          </Link>
           <Link href="/sets" className="btn-primary">
             {s.nav_book}
           </Link>
